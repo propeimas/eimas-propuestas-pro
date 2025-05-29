@@ -8,8 +8,8 @@ import { addPageHeader } from './pdfLayout';
 export const addCompanyInfo = (
   pdf: jsPDF, 
   yPosition: number, 
-  configuracion?: ConfiguracionEmpresa, 
-  onPageBreak: () => void
+  onPageBreak: () => void,
+  configuracion?: ConfiguracionEmpresa
 ): number => {
   if (!configuracion) return yPosition;
   
@@ -73,9 +73,9 @@ export const addClientInfo = (
 export const addPersonalSection = (
   pdf: jsPDF,
   yPosition: number,
+  onPageBreak: () => void,
   personal?: PersonalEquipo,
-  configuracion?: ConfiguracionEmpresa,
-  onPageBreak: () => void
+  configuracion?: ConfiguracionEmpresa
 ): number => {
   if (!personal?.personal || personal.personal.length === 0) return yPosition;
   
@@ -113,9 +113,9 @@ export const addPersonalSection = (
 export const addEquipmentSection = (
   pdf: jsPDF,
   yPosition: number,
+  onPageBreak: () => void,
   personal?: PersonalEquipo,
-  configuracion?: ConfiguracionEmpresa,
-  onPageBreak: () => void
+  configuracion?: ConfiguracionEmpresa
 ): number => {
   if (!personal?.equipos || personal.equipos.length === 0) return yPosition;
   
@@ -152,8 +152,8 @@ export const addEquipmentSection = (
 export const addCostsSection = (
   pdf: jsPDF,
   yPosition: number,
-  costos?: DesgloseCostos,
-  onPageBreak: () => void
+  onPageBreak: () => void,
+  costos?: DesgloseCostos
 ): number => {
   if (!costos || costos.items.length === 0) return yPosition;
   

@@ -13,6 +13,24 @@ export interface PropuestaCompleta {
   configuracion?: ConfiguracionEmpresa;
 }
 
+// Función para generar código auto-incremental de propuesta
+export const generateProposalCode = (): string => {
+  const currentYear = new Date().getFullYear();
+  
+  // En producción, esto vendría de una base de datos o localStorage
+  // Por ahora usamos un contador simple basado en el timestamp para simular el incremento
+  const storedCounter = localStorage.getItem('proposalCounter');
+  let counter = storedCounter ? parseInt(storedCounter) : 74; // Empezar desde 074
+  
+  counter += 1;
+  localStorage.setItem('proposalCounter', counter.toString());
+  
+  // Formatear el número con ceros a la izquierda (3 dígitos)
+  const formattedCounter = counter.toString().padStart(3, '0');
+  
+  return `P-${formattedCounter}-${currentYear}`;
+};
+
 export const generatePDF = async (data: PropuestaCompleta) => {
   const { propuesta, caracteristicas, personal, costos, configuracion } = data;
   
@@ -33,7 +51,7 @@ export const generatePDF = async (data: PropuestaCompleta) => {
   yPosition = 50;
 
   // INFORMACIÓN DE LA EMPRESA
-  yPosition = addCompanyInfo(pdf, yPosition, configuracion, createNewPageHeader);
+  yPosition = addCompanyInfo(pdf, yPosition, createNewPageHeader, configuracion);
 
   // INFORMACIÓN DEL CLIENTE
   yPosition = addClientInfo(pdf, yPosition, propuesta, createNewPageHeader);
@@ -84,10 +102,10 @@ export const generatePDF = async (data: PropuestaCompleta) => {
   }
 
   // PERSONAL DEL PROYECTO
-  yPosition = addPersonalSection(pdf, yPosition, personal, configuracion, createNewPageHeader);
+  yPosition = addPersonalSection(pdf, yPosition, createNewPageHeader, personal, configuracion);
 
   // EQUIPOS UTILIZADOS
-  yPosition = addEquipmentSection(pdf, yPosition, personal, configuracion, createNewPageHeader);
+  yPosition = addEquipmentSection(pdf, yPosition, createNewPageHeader, personal, configuracion);
 
   // Duración del estudio
   if (propuesta.duracion) {
@@ -104,7 +122,7 @@ export const generatePDF = async (data: PropuestaCompleta) => {
   }
 
   // COSTOS
-  yPosition = addCostsSection(pdf, yPosition, costos, createNewPageHeader);
+  yPosition = addCostsSection(pdf, yPosition, createNewPageHeader, costos);
 
   // Compromisos de calidad
   if (configuracion?.compromisos && configuracion.compromisos.length > 0) {

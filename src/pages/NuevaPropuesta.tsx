@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CaracteristicasTecnicasForm } from "@/components/forms/CaracteristicasTecnicasForm";
 import { PersonalEquipoForm } from "@/components/forms/PersonalEquipoForm";
 import { DesgloseCostosForm } from "@/components/forms/DesgloseCostosForm";
-import { downloadPDF } from "@/services/pdfService";
+import { downloadPDF, generateProposalCode } from "@/services/pdfService";
 
 export default function NuevaPropuesta() {
   const { toast } = useToast();
@@ -97,14 +97,6 @@ export default function NuevaPropuesta() {
     "ACEPTADA",
     "RECHAZADA"
   ];
-
-  const generateProposalCode = () => {
-    const today = new Date();
-    const dateStr = format(today, 'ddMMyyyy');
-    const empresa = formData.empresaCliente?.toUpperCase().replace(/\s+/g, '').substring(0, 8) || 'CLIENTE';
-    const incremental = Math.floor(Math.random() * 99) + 1;
-    return `P-${empresa}-${dateStr}-${incremental.toString().padStart(2, '0')}`;
-  };
 
   const handleInputChange = (field: keyof Propuesta, value: any) => {
     setFormData(prev => ({
