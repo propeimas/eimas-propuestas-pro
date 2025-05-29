@@ -1,0 +1,251 @@
+
+{
+  "propuestas": {
+    "description": "Colección principal para almacenar todas las propuestas de servicios",
+    "fields": {
+      "id": "string (auto-generated)",
+      "fechaRecepcion": "string (YYYY-MM-DD)",
+      "fechaAprobacion": "string (YYYY-MM-DD) | null",
+      "medioSolicitud": "string (Email, WhatsApp, Llamada, etc.)",
+      "nombreSolicitante": "string",
+      "nombreReceptor": "string", 
+      "empresaCliente": "string",
+      "mesAproximadoServicio": "string (YYYY-MM-DD)",
+      "tipoServicio": "string",
+      "municipio": "string",
+      "telefono": "string",
+      "email": "string",
+      "descripcionServicio": "string",
+      "valorPropuesta": "number",
+      "codigoPropuesta": "string (auto-generated: P-EMPRESA-FECHA-INCREMENTAL)",
+      "seguimientoObservaciones": "string",
+      "objetivo": "string",
+      "alcance": "string",
+      "duracion": "number (días calculados)",
+      "estado": "string (PENDIENTE | EN PROCESO | ACEPTADA | RECHAZADA)",
+      "createdAt": "timestamp",
+      "updatedAt": "timestamp"
+    },
+    "example": {
+      "id": "prop_001",
+      "fechaRecepcion": "2025-05-29",
+      "fechaAprobacion": "2025-06-15",
+      "medioSolicitud": "Email",
+      "nombreSolicitante": "Juan Pérez",
+      "nombreReceptor": "María González",
+      "empresaCliente": "Industrias XYZ S.A.S",
+      "mesAproximadoServicio": "2025-07-01",
+      "tipoServicio": "Monitoreo de calidad del aire",
+      "municipio": "Bogotá",
+      "telefono": "+57 3001234567",
+      "email": "contacto@industriasxyz.com",
+      "descripcionServicio": "Monitoreo de emisiones atmosféricas en planta industrial",
+      "valorPropuesta": 15000000,
+      "codigoPropuesta": "P-INDUSTRIASXYZ-29052025-01",
+      "seguimientoObservaciones": "Cliente requiere resultados en 15 días",
+      "objetivo": "Evaluar la calidad del aire en zona industrial",
+      "alcance": "Monitoreo de PM10, PM2.5, SO2, NOx durante 24 horas",
+      "duracion": 17,
+      "estado": "PENDIENTE",
+      "createdAt": "2025-05-29T10:00:00Z",
+      "updatedAt": "2025-05-29T10:00:00Z"
+    }
+  },
+
+  "caracteristicas_tecnicas": {
+    "description": "Colección para almacenar las características técnicas de cada propuesta",
+    "fields": {
+      "id": "string (auto-generated)",
+      "propuestaId": "string (referencia a propuestas)",
+      "metodologia": "string",
+      "equiposUtilizados": "array of strings",
+      "parametrosAnalizar": "array of strings",
+      "normasReferencia": "array of strings", 
+      "procedimientos": "string",
+      "controlCalidad": "string",
+      "createdAt": "timestamp",
+      "updatedAt": "timestamp"
+    },
+    "example": {
+      "id": "ct_001",
+      "propuestaId": "prop_001",
+      "metodologia": "Muestreo isocinético según EPA Method 5",
+      "equiposUtilizados": [
+        "Muestreador isocinético EPA Method 5",
+        "Analizador de gases Testo 350",
+        "Calibrador de flujo"
+      ],
+      "parametrosAnalizar": [
+        "Material particulado PM10",
+        "Material particulado PM2.5", 
+        "Dióxido de azufre (SO2)",
+        "Óxidos de nitrógeno (NOx)"
+      ],
+      "normasReferencia": [
+        "EPA Method 5",
+        "Resolución 2254 de 2017",
+        "ISO 9096:2017"
+      ],
+      "procedimientos": "Procedimiento de muestreo según normativa vigente",
+      "controlCalidad": "Verificación de equipos calibrados y personal certificado",
+      "createdAt": "2025-05-29T10:00:00Z",
+      "updatedAt": "2025-05-29T10:00:00Z"
+    }
+  },
+
+  "personal_equipos": {
+    "description": "Colección para almacenar información del personal y equipos asignados",
+    "fields": {
+      "id": "string (auto-generated)",
+      "propuestaId": "string (referencia a propuestas)",
+      "personal": "array of objects",
+      "equipos": "array of objects",
+      "createdAt": "timestamp",
+      "updatedAt": "timestamp"
+    },
+    "personal_object_structure": {
+      "nombre": "string",
+      "cargo": "string", 
+      "experiencia": "string",
+      "responsabilidades": "string"
+    },
+    "equipos_object_structure": {
+      "nombre": "string",
+      "marca": "string",
+      "modelo": "string",
+      "calibracion": "string",
+      "funcion": "string"
+    },
+    "example": {
+      "id": "pe_001",
+      "propuestaId": "prop_001",
+      "personal": [
+        {
+          "nombre": "Ing. Carlos Rodríguez",
+          "cargo": "Ingeniero Ambiental Responsable",
+          "experiencia": "10 años en monitoreo atmosférico",
+          "responsabilidades": "Supervisión técnica y elaboración de informe"
+        },
+        {
+          "nombre": "Tec. Ana López",
+          "cargo": "Técnico en Muestreo",
+          "experiencia": "5 años en trabajo de campo",
+          "responsabilidades": "Ejecución del muestreo y manejo de equipos"
+        }
+      ],
+      "equipos": [
+        {
+          "nombre": "Muestreador Isocinético",
+          "marca": "Apex Instruments",
+          "modelo": "Model 5000",
+          "calibracion": "Válida hasta 2025-12-31",
+          "funcion": "Muestreo de material particulado"
+        },
+        {
+          "nombre": "Analizador de Gases",
+          "marca": "Testo",
+          "modelo": "350",
+          "calibracion": "Válida hasta 2025-11-15",
+          "funcion": "Medición de gases contaminantes"
+        }
+      ],
+      "createdAt": "2025-05-29T10:00:00Z",
+      "updatedAt": "2025-05-29T10:00:00Z"
+    }
+  },
+
+  "desglose_costos": {
+    "description": "Colección para almacenar el desglose detallado de costos de cada propuesta",
+    "fields": {
+      "id": "string (auto-generated)",
+      "propuestaId": "string (referencia a propuestas)",
+      "items": "array of objects",
+      "subtotal": "number",
+      "iva": "number",
+      "total": "number",
+      "createdAt": "timestamp",
+      "updatedAt": "timestamp"
+    },
+    "items_object_structure": {
+      "concepto": "string",
+      "cantidad": "number",
+      "valorUnitario": "number",
+      "valorTotal": "number"
+    },
+    "example": {
+      "id": "dc_001",
+      "propuestaId": "prop_001",
+      "items": [
+        {
+          "concepto": "Muestreo de material particulado",
+          "cantidad": 3,
+          "valorUnitario": 800000,
+          "valorTotal": 2400000
+        },
+        {
+          "concepto": "Análisis de laboratorio",
+          "cantidad": 6,
+          "valorUnitario": 150000,
+          "valorTotal": 900000
+        },
+        {
+          "concepto": "Elaboración de informe técnico",
+          "cantidad": 1,
+          "valorUnitario": 1200000,
+          "valorTotal": 1200000
+        },
+        {
+          "concepto": "Desplazamientos y viáticos",
+          "cantidad": 1,
+          "valorUnitario": 500000,
+          "valorTotal": 500000
+        }
+      ],
+      "subtotal": 5000000,
+      "iva": 950000,
+      "total": 5950000,
+      "createdAt": "2025-05-29T10:00:00Z",
+      "updatedAt": "2025-05-29T10:00:00Z"
+    }
+  },
+
+  "configuracion_empresa": {
+    "description": "Colección para almacenar la configuración y datos de la empresa EIMAS",
+    "fields": {
+      "id": "string (fixed: 'eimas_config')",
+      "nombreEmpresa": "string",
+      "telefono": "string",
+      "direccion": "string",
+      "email": "string",
+      "resolucion": "string",
+      "website": "string",
+      "logo": "string (URL o base64)",
+      "firma": "string (URL o base64)",
+      "compromisos": "array of strings",
+      "createdAt": "timestamp",
+      "updatedAt": "timestamp"
+    },
+    "example": {
+      "id": "eimas_config",
+      "nombreEmpresa": "EIMAS - Estudios e Ingeniería Ambiental S.A.S",
+      "telefono": "+57 (1) 234-5678",
+      "direccion": "Carrera 15 #93-47, Oficina 501, Bogotá D.C., Colombia",
+      "email": "info@eimas.com.co",
+      "resolucion": "Resolución IDEAM 1234 de 2023",
+      "website": "www.eimas.com.co",
+      "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhE...",
+      "firma": "data:image/png;base64,iVBORw0KGgoAAAANSUhE...",
+      "compromisos": [
+        "Entrega puntual del informe técnico",
+        "Verificación con laboratorio acreditado ante el IDEAM",
+        "Uso de equipos calibrados y certificados",
+        "Personal técnico especializado y certificado",
+        "Cumplimiento de normativa ambiental vigente",
+        "Disponibilidad para aclaraciones post-entrega",
+        "Confidencialidad de la información del cliente"
+      ],
+      "createdAt": "2025-05-29T10:00:00Z",
+      "updatedAt": "2025-05-29T10:00:00Z"
+    }
+  }
+}
