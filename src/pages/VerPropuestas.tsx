@@ -8,9 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Plus, Edit, Trash, FileText, Download } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { downloadPDF } from "@/services/pdfService";
 
 export default function VerPropuestas() {
   const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
 
   // Datos de ejemplo - se conectará con Firestore
   const propuestas = [
@@ -21,7 +24,12 @@ export default function VerPropuestas() {
       empresaCliente: "Empresa Ejemplo S.A.S",
       tipoServicio: "Monitoreo de calidad del aire",
       valorPropuesta: 15000000,
-      estado: "PENDIENTE"
+      estado: "PENDIENTE",
+      nombreSolicitante: "Juan Pérez",
+      telefono: "300 123 4567",
+      email: "juan@empresa.com",
+      objetivo: "Realizar monitoreo de calidad del aire para cumplimiento normativo",
+      alcance: "Monitoreo durante 30 días en 3 puntos estratégicos"
     },
     // Más propuestas se cargarán desde Firestore
   ];
@@ -47,6 +55,124 @@ export default function VerPropuestas() {
       currency: 'COP',
       minimumFractionDigits: 0,
     }).format(value);
+  };
+
+  const handleDownloadPDF = async (propuesta: any) => {
+    try {
+      // Datos de ejemplo para la propuesta completa
+      const propuestaCompleta = {
+        propuesta: {
+          ...propuesta,
+          nombreReceptor: "Ana García",
+          municipio: "Bogotá",
+          descripcionServicio: "Monitoreo completo de calidad del aire",
+          seguimientoObservaciones: "Propuesta en proceso de revisión",
+          duracion: 30,
+          mesAproximadoServicio: "2025-06-01",
+          fechaAprobacion: "",
+          medioSolicitud: "Email",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        caracteristicas: {
+          propuestaId: propuesta.id,
+          metodologia: "Metodología basada en normativa EPA y Resolución 2254 de 2017",
+          equiposUtilizados: ["Monitor de Partículas PM2.5", "Monitor de Partículas PM10", "Estación Meteorológica"],
+          parametrosAnalizar: ["PM2.5", "PM10", "Velocidad del viento", "Dirección del viento"],
+          normasReferencia: ["Resolución 2254 de 2017", "EPA 40 CFR Part 58"],
+          procedimientos: "Instalación de equipos, calibración diaria, toma de datos cada 15 minutos",
+          controlCalidad: "Verificación diaria de equipos, comparación con patrones certificados"
+        },
+        personal: {
+          propuestaId: propuesta.id,
+          personal: [
+            {
+              nombre: "Dr. Carlos Martínez",
+              cargo: "Director Técnico",
+              experiencia: "15 años",
+              responsabilidades: "Supervisión técnica y validación de resultados"
+            },
+            {
+              nombre: "Ing. María López",
+              cargo: "Ingeniera de Campo",
+              experiencia: "8 años",
+              responsabilidades: "Instalación y mantenimiento de equipos"
+            }
+          ],
+          equipos: [
+            {
+              nombre: "Monitor de Partículas",
+              marca: "Thermo Fisher",
+              modelo: "SHARP 5030",
+              calibracion: "2024-12-15",
+              funcion: "Medición continua de PM2.5 y PM10"
+            },
+            {
+              nombre: "Estación Meteorológica",
+              marca: "Davis Instruments",
+              modelo: "Vantage Pro2",
+              calibracion: "2024-11-20",
+              funcion: "Registro de condiciones meteorológicas"
+            }
+          ]
+        },
+        costos: {
+          propuestaId: propuesta.id,
+          items: [
+            {
+              concepto: "Monitoreo PM2.5 y PM10",
+              cantidad: 30,
+              valorUnitario: 350000,
+              valorTotal: 10500000
+            },
+            {
+              concepto: "Análisis de datos meteorológicos",
+              cantidad: 1,
+              valorUnitario: 2500000,
+              valorTotal: 2500000
+            },
+            {
+              concepto: "Informe técnico",
+              cantidad: 1,
+              valorUnitario: 2000000,
+              valorTotal: 2000000
+            }
+          ],
+          subtotal: 15000000,
+          iva: 2850000,
+          total: 17850000
+        },
+        configuracion: {
+          nombreEmpresa: "EIMAS - Estudios e Investigaciones en Monitoreo Ambiental y Sanitario",
+          telefono: "+57 300 123 4567",
+          direccion: "Calle 123 #45-67, Bogotá, Colombia",
+          email: "info@eimas.com.co",
+          resolucion: "Resolución 1234 del 2024 - Ministerio de Ambiente",
+          website: "www.eimas.com.co",
+          compromisos: [
+            "Entrega puntual del informe técnico",
+            "Verificación con laboratorio acreditado ante IDEAM",
+            "Uso de equipos calibrados y certificados",
+            "Personal técnico certificado y calificado",
+            "Cumplimiento estricto de la normatividad vigente",
+            "Soporte técnico post-entrega del informe"
+          ]
+        }
+      };
+
+      await downloadPDF(propuestaCompleta);
+
+      toast({
+        title: "PDF descargado exitosamente",
+        description: `Se ha descargado la propuesta ${propuesta.codigoPropuesta}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error al descargar PDF",
+        description: "Hubo un problema al generar el archivo PDF",
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredPropuestas = propuestas.filter(propuesta =>
@@ -144,6 +270,7 @@ export default function VerPropuestas() {
                               size="sm"
                               variant="outline"
                               title="Descargar PDF"
+                              onClick={() => handleDownloadPDF(propuesta)}
                             >
                               <Download className="w-4 h-4" />
                             </Button>
