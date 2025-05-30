@@ -41,7 +41,7 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
   // Estado para fecha de calibración
   const [fechaCalibracion, setFechaCalibracion] = useState<Date>();
 
-  // Listas de opciones predefinidas (sin duplicados)
+  // Listas de opciones predefinidas
   const opcionesPersonal = {
     nombres: ["Juan Pérez", "María García", "Carlos Rodríguez", "Ana López", "Miguel Torres"],
     cargos: ["Ingeniero Ambiental", "Técnico en Monitoreo", "Coordinador de Proyecto", "Analista de Laboratorio", "Supervisor de Campo"],
@@ -68,7 +68,7 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
     ]
   };
 
-  // Función para obtener opciones únicas (sin duplicados con los ya agregados)
+  // Función para obtener opciones disponibles (sin duplicados con los ya agregados)
   const getOpcionesDisponibles = (opciones: string[], yaUsados: string[]) => {
     return opciones.filter(opcion => !yaUsados.includes(opcion));
   };
@@ -152,7 +152,10 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Nombre *</Label>
-              <Select onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, nombre: value })}>
+              <Select 
+                value={nuevoPersonal.nombre} 
+                onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, nombre: value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar nombre" />
                 </SelectTrigger>
@@ -167,7 +170,10 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
             </div>
             <div className="space-y-2">
               <Label>Cargo *</Label>
-              <Select onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, cargo: value })}>
+              <Select 
+                value={nuevoPersonal.cargo} 
+                onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, cargo: value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar cargo" />
                 </SelectTrigger>
@@ -182,7 +188,10 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
             </div>
             <div className="space-y-2">
               <Label>Experiencia</Label>
-              <Select onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, experiencia: value })}>
+              <Select 
+                value={nuevoPersonal.experiencia} 
+                onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, experiencia: value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar experiencia" />
                 </SelectTrigger>
@@ -197,7 +206,10 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
             </div>
             <div className="space-y-2">
               <Label>Responsabilidades</Label>
-              <Select onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, responsabilidades: value })}>
+              <Select 
+                value={nuevoPersonal.responsabilidades} 
+                onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, responsabilidades: value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar responsabilidades" />
                 </SelectTrigger>
@@ -262,7 +274,10 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Nombre del Equipo *</Label>
-              <Select onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, nombre: value })}>
+              <Select 
+                value={nuevoEquipo.nombre} 
+                onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, nombre: value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar equipo" />
                 </SelectTrigger>
@@ -277,7 +292,10 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
             </div>
             <div className="space-y-2">
               <Label>Marca *</Label>
-              <Select onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, marca: value })}>
+              <Select 
+                value={nuevoEquipo.marca} 
+                onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, marca: value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar marca" />
                 </SelectTrigger>
@@ -292,7 +310,10 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
             </div>
             <div className="space-y-2">
               <Label>Modelo</Label>
-              <Select onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, modelo: value })}>
+              <Select 
+                value={nuevoEquipo.modelo} 
+                onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, modelo: value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar modelo" />
                 </SelectTrigger>
@@ -337,7 +358,10 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label>Función</Label>
-              <Select onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, funcion: value })}>
+              <Select 
+                value={nuevoEquipo.funcion} 
+                onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, funcion: value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar función" />
                 </SelectTrigger>

@@ -172,6 +172,25 @@ export default function NuevaPropuesta() {
     handleInputChange('tipoServicio', value);
   };
 
+  // Función para validar datos antes de guardar
+  const validateFormData = () => {
+    const errors: string[] = [];
+    
+    if (!fechaRecepcion) errors.push("Fecha de recepción es requerida");
+    if (!formData.medioSolicitud) errors.push("Medio de solicitud es requerido");
+    if (!formData.nombreSolicitante) errors.push("Nombre del solicitante es requerido");
+    if (!formData.nombreReceptor) errors.push("Nombre del receptor es requerido");
+    if (!formData.empresaCliente) errors.push("Empresa cliente es requerida");
+    if (!formData.tipoServicio) errors.push("Tipo de servicio es requerido");
+    if (!formData.municipio) errors.push("Municipio es requerido");
+    if (!formData.telefono) errors.push("Teléfono es requerido");
+    if (!formData.email) errors.push("Email es requerido");
+    if (!formData.descripcionServicio) errors.push("Descripción del servicio es requerida");
+    if (!formData.valorPropuesta || formData.valorPropuesta <= 0) errors.push("Valor de propuesta debe ser mayor a 0");
+    
+    return errors;
+  };
+
   // Función para limpiar datos guardados
   const clearSavedData = () => {
     localStorage.removeItem('currentProposal');
@@ -181,10 +200,47 @@ export default function NuevaPropuesta() {
     localStorage.removeItem('currentFechaRecepcion');
     localStorage.removeItem('currentFechaAprobacion');
     localStorage.removeItem('currentMesServicio');
+    
+    toast({
+      title: "Datos borrados",
+      description: "Se han limpiado todos los datos del formulario",
+    });
+  };
+
+  // Función para guardar manualmente los datos
+  const handleSaveData = () => {
+    const errors = validateFormData();
+    
+    if (errors.length > 0) {
+      toast({
+        title: "Errores en el formulario",
+        description: errors.join(", "),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    saveDataLocally();
+    
+    toast({
+      title: "Datos guardados",
+      description: "Los datos del formulario han sido guardados localmente",
+    });
   };
 
   const handleGeneratePDF = async () => {
     try {
+      const errors = validateFormData();
+      
+      if (errors.length > 0) {
+        toast({
+          title: "Errores en el formulario",
+          description: errors.join(", "),
+          variant: "destructive"
+        });
+        return;
+      }
+
       const codigoPropuesta = generateProposalCode();
       
       const propuesta: Propuesta = {
@@ -238,6 +294,17 @@ export default function NuevaPropuesta() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const errors = validateFormData();
+    
+    if (errors.length > 0) {
+      toast({
+        title: "Errores en el formulario",
+        description: errors.join(", "),
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Guardar datos localmente antes de procesar
     saveDataLocally();
@@ -298,6 +365,10 @@ export default function NuevaPropuesta() {
       alcance: '',
       estado: 'PENDIENTE'
     });
+    
+    setFechaRecepcion(new Date());
+    setFechaAprobacion(undefined);
+    setMesServicio(undefined);
     
     // Aquí se integrará con Firestore
   };
@@ -428,7 +499,10 @@ export default function NuevaPropuesta() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Medio por el cual se hace la solicitud *</Label>
-                      <Select onValueChange={(value) => handleInputChange('medioSolicitud', value)}>
+                      <Select 
+                        value={formData.medioSolicitud || ''} 
+                        onValueChange={(value) => handleInputChange('medioSolicitud', value)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar medio" />
                         </SelectTrigger>
@@ -445,7 +519,7 @@ export default function NuevaPropuesta() {
                     <div className="space-y-2">
                       <Label>Estado de la propuesta</Label>
                       <Select 
-                        defaultValue="PENDIENTE"
+                        value={formData.estado || 'PENDIENTE'}
                         onValueChange={(value) => handleInputChange('estado', value)}
                       >
                         <SelectTrigger>
@@ -619,18 +693,26 @@ export default function NuevaPropuesta() {
           </Tabs>
 
           {/* Botones de acción */}
-          <div className="flex justify-end space-x-4 pt-6 border-t bg-white p-6 rounded-lg mt-6">
-            <Button type="button" variant="outline" onClick={clearSavedData}>
-              Cancelar
-            </Button>
-            <Button type="button" onClick={handleGeneratePDF} variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Generar PDF
-            </Button>
-            <Button onClick={handleSubmit} className="eimas-gradient">
-              <Save className="w-4 h-4 mr-2" />
-              Guardar Propuesta
-            </Button>
+          <div className="flex justify-between space-x-4 pt-6 border-t bg-white p-6 rounded-lg mt-6">
+            <div className="flex space-x-4">
+              <Button type="button" variant="outline" onClick={clearSavedData}>
+                Limpiar Formulario
+              </Button>
+              <Button type="button" onClick={handleSaveData} variant="secondary">
+                <Save className="w-4 h-4 mr-2" />
+                Guardar Borrador
+              </Button>
+            </div>
+            <div className="flex space-x-4">
+              <Button type="button" onClick={handleGeneratePDF} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Generar PDF
+              </Button>
+              <Button onClick={handleSubmit} className="eimas-gradient">
+                <Save className="w-4 h-4 mr-2" />
+                Guardar Propuesta
+              </Button>
+            </div>
           </div>
         </div>
       </div>
