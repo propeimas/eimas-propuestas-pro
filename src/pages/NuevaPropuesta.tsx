@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { CaracteristicasTecnicasForm } from "@/components/forms/CaracteristicasT
 import { PersonalEquipoForm } from "@/components/forms/PersonalEquipoForm";
 import { DesgloseCostosForm } from "@/components/forms/DesgloseCostosForm";
 import { downloadPDF, generateProposalCode } from "@/services/pdfService";
+import { Combobox } from "@/components/ui/combobox";
 
 export default function NuevaPropuesta() {
   const { toast } = useToast();
