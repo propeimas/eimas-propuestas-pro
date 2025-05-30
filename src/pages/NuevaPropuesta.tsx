@@ -208,9 +208,57 @@ export default function NuevaPropuesta() {
     localStorage.removeItem('currentFechaAprobacion');
     localStorage.removeItem('currentMesServicio');
     
+    // Reiniciar estados después de limpiar localStorage
+    setFormData({
+      fechaRecepcion: new Date().toISOString().split('T')[0],
+      medioSolicitud: '',
+      nombreSolicitante: '',
+      nombreReceptor: '',
+      empresaCliente: '',
+      mesAproximadoServicio: '',
+      tipoServicio: '',
+      municipio: '',
+      telefono: '',
+      email: '',
+      descripcionServicio: '',
+      valorPropuesta: 0,
+      seguimientoObservaciones: '',
+      objetivo: '',
+      alcance: '',
+      estado: 'PENDIENTE'
+    });
+    
+    setCaracteristicas({
+      propuestaId: '',
+      metodologia: '',
+      equiposUtilizados: [],
+      parametrosAnalizar: [],
+      normasReferencia: [],
+      procedimientos: '',
+      controlCalidad: ''
+    });
+    
+    setPersonalEquipo({
+      propuestaId: '',
+      personal: [],
+      equipos: []
+    });
+    
+    setDesgloseCostos({
+      propuestaId: '',
+      items: [],
+      subtotal: 0,
+      iva: 0,
+      total: 0
+    });
+    
+    setFechaRecepcion(new Date());
+    setFechaAprobacion(undefined);
+    setMesServicio(undefined);
+    
     toast({
-      title: "Datos borrados",
-      description: "Se han limpiado todos los datos del formulario",
+      title: "Formulario limpiado",
+      description: "Se han borrado todos los datos del formulario",
     });
   };
 
@@ -317,75 +365,72 @@ export default function NuevaPropuesta() {
       return;
     }
     
-    // Guardar datos localmente antes de procesar
-    saveDataLocally();
-    
-    const codigoPropuesta = generateProposalCode();
-    
-    // Usar el valor del desglose si está disponible, sino el valor manual
-    const valorFinal = desgloseCostos.total > 0 ? desgloseCostos.total : (formData.valorPropuesta || 0);
-    
-    const propuesta: Propuesta = {
-      ...formData as Propuesta,
-      codigoPropuesta,
-      valorPropuesta: valorFinal,
-      fechaRecepcion: fechaRecepcion ? fechaRecepcion.toISOString().split('T')[0] : '',
-      fechaAprobacion: fechaAprobacion ? fechaAprobacion.toISOString().split('T')[0] : '',
-      mesAproximadoServicio: mesServicio ? mesServicio.toISOString().split('T')[0] : '',
-      duracion: fechaRecepcion && fechaAprobacion ? 
-        Math.ceil((fechaAprobacion.getTime() - fechaRecepcion.getTime()) / (1000 * 60 * 60 * 24)) : 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    try {
+      // Guardar datos localmente antes de procesar
+      saveDataLocally();
+      
+      const codigoPropuesta = generateProposalCode();
+      
+      // Usar el valor del desglose si está disponible, sino el valor manual
+      const valorFinal = desgloseCostos.total > 0 ? desgloseCostos.total : (formData.valorPropuesta || 0);
+      
+      const propuesta: Propuesta = {
+        ...formData as Propuesta,
+        codigoPropuesta,
+        valorPropuesta: valorFinal,
+        fechaRecepcion: fechaRecepcion ? fechaRecepcion.toISOString().split('T')[0] : '',
+        fechaAprobacion: fechaAprobacion ? fechaAprobacion.toISOString().split('T')[0] : '',
+        mesAproximadoServicio: mesServicio ? mesServicio.toISOString().split('T')[0] : '',
+        duracion: fechaRecepcion && fechaAprobacion ? 
+          Math.ceil((fechaAprobacion.getTime() - fechaRecepcion.getTime()) / (1000 * 60 * 60 * 24)) : 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
 
-    // Guardar propuesta completa en localStorage con código único
-    const propuestaCompleta = {
-      propuesta,
-      caracteristicas,
-      personalEquipo,
-      desgloseCostos
-    };
-    
-    localStorage.setItem(`propuesta_${codigoPropuesta}`, JSON.stringify(propuestaCompleta));
-    
-    console.log('Propuesta guardada localmente:', propuesta);
-    console.log('Características técnicas:', caracteristicas);
-    console.log('Personal y equipos:', personalEquipo);
-    console.log('Desglose de costos:', desgloseCostos);
-    
-    toast({
-      title: "Propuesta guardada exitosamente",
-      description: `Código de propuesta: ${codigoPropuesta}. Datos guardados localmente.`,
-    });
+      // Crear objeto completo de la propuesta con todos los datos
+      const propuestaCompleta = {
+        propuesta,
+        caracteristicas: {
+          ...caracteristicas,
+          propuestaId: codigoPropuesta
+        },
+        personalEquipo: {
+          ...personalEquipo,
+          propuestaId: codigoPropuesta
+        },
+        desgloseCostos: {
+          ...desgloseCostos,
+          propuestaId: codigoPropuesta
+        }
+      };
+      
+      // Guardar propuesta completa en localStorage con código único
+      localStorage.setItem(`propuesta_${codigoPropuesta}`, JSON.stringify(propuestaCompleta));
+      
+      console.log('Propuesta guardada localmente:', propuesta);
+      console.log('Características técnicas:', caracteristicas);
+      console.log('Personal y equipos:', personalEquipo);
+      console.log('Desglose de costos:', desgloseCostos);
+      
+      // Mostrar mensaje de éxito
+      toast({
+        title: "Propuesta guardada exitosamente",
+        description: `Código de propuesta: ${codigoPropuesta}. La propuesta ha sido guardada con todos sus datos.`,
+      });
 
-    // Limpiar formulario después de guardar
-    clearSavedData();
-    
-    // Reiniciar estados
-    setFormData({
-      fechaRecepcion: new Date().toISOString().split('T')[0],
-      medioSolicitud: '',
-      nombreSolicitante: '',
-      nombreReceptor: '',
-      empresaCliente: '',
-      mesAproximadoServicio: '',
-      tipoServicio: '',
-      municipio: '',
-      telefono: '',
-      email: '',
-      descripcionServicio: '',
-      valorPropuesta: 0,
-      seguimientoObservaciones: '',
-      objetivo: '',
-      alcance: '',
-      estado: 'PENDIENTE'
-    });
-    
-    setFechaRecepcion(new Date());
-    setFechaAprobacion(undefined);
-    setMesServicio(undefined);
-    
-    // Aquí se integrará con Firestore
+      // Solo limpiar formulario después de confirmar guardado exitoso
+      setTimeout(() => {
+        clearSavedData();
+      }, 1500); // Dar tiempo para que el usuario vea el mensaje de éxito
+      
+    } catch (error) {
+      console.error('Error al guardar propuesta:', error);
+      toast({
+        title: "Error al guardar",
+        description: "Hubo un problema al guardar la propuesta. Intente nuevamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
