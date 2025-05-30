@@ -24,53 +24,108 @@ export default function NuevaPropuesta() {
   const { toast } = useToast();
   
   // Estados para cada formulario
-  const [formData, setFormData] = useState<Partial<Propuesta>>({
-    fechaRecepcion: new Date().toISOString().split('T')[0],
-    medioSolicitud: '',
-    nombreSolicitante: '',
-    nombreReceptor: '',
-    empresaCliente: '',
-    mesAproximadoServicio: '',
-    tipoServicio: '',
-    municipio: '',
-    telefono: '',
-    email: '',
-    descripcionServicio: '',
-    valorPropuesta: 0,
-    seguimientoObservaciones: '',
-    objetivo: '',
-    alcance: '',
-    estado: 'PENDIENTE'
+  const [formData, setFormData] = useState<Partial<Propuesta>>(() => {
+    // Cargar datos guardados del localStorage si existen
+    const savedData = localStorage.getItem('currentProposal');
+    return savedData ? JSON.parse(savedData) : {
+      fechaRecepcion: new Date().toISOString().split('T')[0],
+      medioSolicitud: '',
+      nombreSolicitante: '',
+      nombreReceptor: '',
+      empresaCliente: '',
+      mesAproximadoServicio: '',
+      tipoServicio: '',
+      municipio: '',
+      telefono: '',
+      email: '',
+      descripcionServicio: '',
+      valorPropuesta: 0,
+      seguimientoObservaciones: '',
+      objetivo: '',
+      alcance: '',
+      estado: 'PENDIENTE'
+    };
   });
 
-  const [caracteristicas, setCaracteristicas] = useState<CaracteristicasTecnicas>({
-    propuestaId: '',
-    metodologia: '',
-    equiposUtilizados: [],
-    parametrosAnalizar: [],
-    normasReferencia: [],
-    procedimientos: '',
-    controlCalidad: ''
+  const [caracteristicas, setCaracteristicas] = useState<CaracteristicasTecnicas>(() => {
+    const saved = localStorage.getItem('currentCaracteristicas');
+    return saved ? JSON.parse(saved) : {
+      propuestaId: '',
+      metodologia: '',
+      equiposUtilizados: [],
+      parametrosAnalizar: [],
+      normasReferencia: [],
+      procedimientos: '',
+      controlCalidad: ''
+    };
   });
 
-  const [personalEquipo, setPersonalEquipo] = useState<PersonalEquipo>({
-    propuestaId: '',
-    personal: [],
-    equipos: []
+  const [personalEquipo, setPersonalEquipo] = useState<PersonalEquipo>(() => {
+    const saved = localStorage.getItem('currentPersonalEquipo');
+    return saved ? JSON.parse(saved) : {
+      propuestaId: '',
+      personal: [],
+      equipos: []
+    };
   });
 
-  const [desgloseCostos, setDesgloseCostos] = useState<DesgloseCostos>({
-    propuestaId: '',
-    items: [],
-    subtotal: 0,
-    iva: 0,
-    total: 0
+  const [desgloseCostos, setDesgloseCostos] = useState<DesgloseCostos>(() => {
+    const saved = localStorage.getItem('currentDesgloseCostos');
+    return saved ? JSON.parse(saved) : {
+      propuestaId: '',
+      items: [],
+      subtotal: 0,
+      iva: 0,
+      total: 0
+    };
   });
 
   // Estados para fechas
-  const [fechaRecepcion, setFechaRecepcion] = useState<Date>();
-  const [fechaAprobacion, setFechaAprobacion] = useState<Date>();
-  const [mesServicio, setMesServicio] = useState<Date>();
+  const [fechaRecepcion, setFechaRecepcion] = useState<Date>(() => {
+    const saved = localStorage.getItem('currentFechaRecepcion');
+    return saved ? new Date(saved) : undefined;
+  });
+  
+  const [fechaAprobacion, setFechaAprobacion] = useState<Date>(() => {
+    const saved = localStorage.getItem('currentFechaAprobacion');
+    return saved ? new Date(saved) : undefined;
+  });
+  
+  const [mesServicio, setMesServicio] = useState<Date>(() => {
+    const saved = localStorage.getItem('currentMesServicio');
+    return saved ? new Date(saved) : undefined;
+  });
+
+  // Estados para tipos de servicio personalizados
+  const [tiposServicioPersonalizados, setTiposServicioPersonalizados] = useState<string[]>(() => {
+    const saved = localStorage.getItem('tiposServicioPersonalizados');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Función para guardar datos automáticamente
+  const saveDataLocally = () => {
+    localStorage.setItem('currentProposal', JSON.stringify(formData));
+    localStorage.setItem('currentCaracteristicas', JSON.stringify(caracteristicas));
+    localStorage.setItem('currentPersonalEquipo', JSON.stringify(personalEquipo));
+    localStorage.setItem('currentDesgloseCostos', JSON.stringify(desgloseCostos));
+    
+    if (fechaRecepcion) {
+      localStorage.setItem('currentFechaRecepcion', fechaRecepcion.toISOString());
+    }
+    if (fechaAprobacion) {
+      localStorage.setItem('currentFechaAprobacion', fechaAprobacion.toISOString());
+    }
+    if (mesServicio) {
+      localStorage.setItem('currentMesServicio', mesServicio.toISOString());
+    }
+    
+    localStorage.setItem('tiposServicioPersonalizados', JSON.stringify(tiposServicioPersonalizados));
+  };
+
+  // Efecto para guardar automáticamente cuando cambian los datos
+  React.useEffect(() => {
+    saveDataLocally();
+  }, [formData, caracteristicas, personalEquipo, desgloseCostos, fechaRecepcion, fechaAprobacion, mesServicio, tiposServicioPersonalizados]);
 
   const mediosSolicitud = [
     "Email",
@@ -81,7 +136,7 @@ export default function NuevaPropuesta() {
     "Referido"
   ];
 
-  const tiposServicio = [
+  const tiposServicioBase = [
     "Monitoreo de calidad del aire",
     "Monitoreo de ruido ambiental",
     "Estudios de impacto ambiental",
@@ -90,6 +145,9 @@ export default function NuevaPropuesta() {
     "Consultoría ambiental",
     "Otro"
   ];
+
+  // Combinar tipos base con personalizados
+  const tiposServicio = [...tiposServicioBase, ...tiposServicioPersonalizados];
 
   const estados = [
     "PENDIENTE",
@@ -103,6 +161,25 @@ export default function NuevaPropuesta() {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleTipoServicioChange = (value: string) => {
+    // Si es un tipo nuevo, agregarlo a la lista personalizada
+    if (!tiposServicioBase.includes(value) && !tiposServicioPersonalizados.includes(value)) {
+      setTiposServicioPersonalizados(prev => [...prev, value]);
+    }
+    handleInputChange('tipoServicio', value);
+  };
+
+  // Función para limpiar datos guardados
+  const clearSavedData = () => {
+    localStorage.removeItem('currentProposal');
+    localStorage.removeItem('currentCaracteristicas');
+    localStorage.removeItem('currentPersonalEquipo');
+    localStorage.removeItem('currentDesgloseCostos');
+    localStorage.removeItem('currentFechaRecepcion');
+    localStorage.removeItem('currentFechaAprobacion');
+    localStorage.removeItem('currentMesServicio');
   };
 
   const handleGeneratePDF = async () => {
@@ -161,6 +238,9 @@ export default function NuevaPropuesta() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Guardar datos localmente antes de procesar
+    saveDataLocally();
+    
     const codigoPropuesta = generateProposalCode();
     
     const propuesta: Propuesta = {
@@ -175,16 +255,49 @@ export default function NuevaPropuesta() {
       updatedAt: new Date().toISOString()
     };
 
-    console.log('Propuesta creada:', propuesta);
+    // Guardar propuesta completa en localStorage con código único
+    const propuestaCompleta = {
+      propuesta,
+      caracteristicas,
+      personalEquipo,
+      desgloseCostos
+    };
+    
+    localStorage.setItem(`propuesta_${codigoPropuesta}`, JSON.stringify(propuestaCompleta));
+    
+    console.log('Propuesta guardada localmente:', propuesta);
     console.log('Características técnicas:', caracteristicas);
     console.log('Personal y equipos:', personalEquipo);
     console.log('Desglose de costos:', desgloseCostos);
     
     toast({
-      title: "Propuesta creada exitosamente",
-      description: `Código de propuesta: ${codigoPropuesta}`,
+      title: "Propuesta guardada exitosamente",
+      description: `Código de propuesta: ${codigoPropuesta}. Datos guardados localmente.`,
     });
 
+    // Limpiar formulario después de guardar
+    clearSavedData();
+    
+    // Reiniciar estados
+    setFormData({
+      fechaRecepcion: new Date().toISOString().split('T')[0],
+      medioSolicitud: '',
+      nombreSolicitante: '',
+      nombreReceptor: '',
+      empresaCliente: '',
+      mesAproximadoServicio: '',
+      tipoServicio: '',
+      municipio: '',
+      telefono: '',
+      email: '',
+      descripcionServicio: '',
+      valorPropuesta: 0,
+      seguimientoObservaciones: '',
+      objetivo: '',
+      alcance: '',
+      estado: 'PENDIENTE'
+    });
+    
     // Aquí se integrará con Firestore
   };
 
@@ -353,6 +466,7 @@ export default function NuevaPropuesta() {
                       <Label>Nombre de quien hace la solicitud *</Label>
                       <Input 
                         placeholder="Nombre completo del solicitante"
+                        value={formData.nombreSolicitante || ''}
                         onChange={(e) => handleInputChange('nombreSolicitante', e.target.value)}
                       />
                     </div>
@@ -361,6 +475,7 @@ export default function NuevaPropuesta() {
                       <Label>Nombre de quien recibe la solicitud *</Label>
                       <Input 
                         placeholder="Nombre del receptor"
+                        value={formData.nombreReceptor || ''}
                         onChange={(e) => handleInputChange('nombreReceptor', e.target.value)}
                       />
                     </div>
@@ -372,6 +487,7 @@ export default function NuevaPropuesta() {
                       <Label>Nombre de la empresa que requiere el servicio *</Label>
                       <Input 
                         placeholder="Razón social de la empresa cliente"
+                        value={formData.empresaCliente || ''}
                         onChange={(e) => handleInputChange('empresaCliente', e.target.value)}
                       />
                     </div>
@@ -379,24 +495,20 @@ export default function NuevaPropuesta() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Tipo de servicio *</Label>
-                        <Select onValueChange={(value) => handleInputChange('tipoServicio', value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar tipo de servicio" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {tiposServicio.map((tipo) => (
-                              <SelectItem key={tipo} value={tipo}>
-                                {tipo}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Combobox
+                          options={tiposServicio}
+                          value={formData.tipoServicio || ''}
+                          onValueChange={handleTipoServicioChange}
+                          placeholder="Seleccionar o escribir tipo de servicio"
+                          allowCustom={true}
+                        />
                       </div>
 
                       <div className="space-y-2">
                         <Label>Municipio donde se realizaría el monitoreo *</Label>
                         <Input 
                           placeholder="Ciudad/Municipio"
+                          value={formData.municipio || ''}
                           onChange={(e) => handleInputChange('municipio', e.target.value)}
                         />
                       </div>
@@ -408,6 +520,7 @@ export default function NuevaPropuesta() {
                         <Input 
                           type="tel"
                           placeholder="Número de contacto"
+                          value={formData.telefono || ''}
                           onChange={(e) => handleInputChange('telefono', e.target.value)}
                         />
                       </div>
@@ -417,6 +530,7 @@ export default function NuevaPropuesta() {
                         <Input 
                           type="email"
                           placeholder="email@empresa.com"
+                          value={formData.email || ''}
                           onChange={(e) => handleInputChange('email', e.target.value)}
                         />
                       </div>
@@ -430,6 +544,7 @@ export default function NuevaPropuesta() {
                       <Textarea 
                         placeholder="Detalle completo del servicio requerido..."
                         rows={4}
+                        value={formData.descripcionServicio || ''}
                         onChange={(e) => handleInputChange('descripcionServicio', e.target.value)}
                       />
                     </div>
@@ -439,6 +554,7 @@ export default function NuevaPropuesta() {
                       <Textarea 
                         placeholder="Objetivo principal del servicio..."
                         rows={3}
+                        value={formData.objetivo || ''}
                         onChange={(e) => handleInputChange('objetivo', e.target.value)}
                       />
                     </div>
@@ -448,6 +564,7 @@ export default function NuevaPropuesta() {
                       <Textarea 
                         placeholder="Alcance del trabajo a realizar..."
                         rows={3}
+                        value={formData.alcance || ''}
                         onChange={(e) => handleInputChange('alcance', e.target.value)}
                       />
                     </div>
@@ -458,6 +575,7 @@ export default function NuevaPropuesta() {
                         <Input 
                           type="number"
                           placeholder="0"
+                          value={formData.valorPropuesta || ''}
                           onChange={(e) => handleInputChange('valorPropuesta', Number(e.target.value))}
                         />
                       </div>
@@ -468,6 +586,7 @@ export default function NuevaPropuesta() {
                       <Textarea 
                         placeholder="Observaciones adicionales, seguimiento, comentarios..."
                         rows={3}
+                        value={formData.seguimientoObservaciones || ''}
                         onChange={(e) => handleInputChange('seguimientoObservaciones', e.target.value)}
                       />
                     </div>
@@ -500,7 +619,7 @@ export default function NuevaPropuesta() {
 
           {/* Botones de acción */}
           <div className="flex justify-end space-x-4 pt-6 border-t bg-white p-6 rounded-lg mt-6">
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" onClick={clearSavedData}>
               Cancelar
             </Button>
             <Button type="button" onClick={handleGeneratePDF} variant="outline">

@@ -5,8 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Users, Trash2 } from "lucide-react";
+import { Plus, Users, Trash2, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { PersonalEquipo } from "@/types/proposal";
 
 interface PersonalEquipoFormProps {
@@ -15,6 +21,7 @@ interface PersonalEquipoFormProps {
 }
 
 export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormProps) {
+  // Estados para el personal
   const [nuevoPersonal, setNuevoPersonal] = useState({
     nombre: "",
     cargo: "",
@@ -22,6 +29,7 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
     responsabilidades: ""
   });
 
+  // Estados para equipos
   const [nuevoEquipo, setNuevoEquipo] = useState({
     nombre: "",
     marca: "",
@@ -30,18 +38,60 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
     funcion: ""
   });
 
+  // Estado para fecha de calibración
+  const [fechaCalibracion, setFechaCalibracion] = useState<Date>();
+
+  // Listas de opciones predefinidas (sin duplicados)
+  const opcionesPersonal = {
+    nombres: ["Juan Pérez", "María García", "Carlos Rodríguez", "Ana López", "Miguel Torres"],
+    cargos: ["Ingeniero Ambiental", "Técnico en Monitoreo", "Coordinador de Proyecto", "Analista de Laboratorio", "Supervisor de Campo"],
+    experiencias: ["1-2 años", "3-5 años", "5-10 años", "10+ años"],
+    responsabilidades: [
+      "Coordinación general del proyecto",
+      "Toma de muestras en campo",
+      "Análisis de laboratorio",
+      "Elaboración de informes",
+      "Supervisión técnica"
+    ]
+  };
+
+  const opcionesEquipos = {
+    nombres: ["Sonómetro", "Analizador de Gases", "Estación Meteorológica", "Muestreador de Aire", "GPS"],
+    marcas: ["CASELLA", "TESTO", "DAVIS", "GILIAN", "GARMIN"],
+    modelos: ["CEL-350", "350-XL", "Vantage Pro2", "GilAir Plus", "eTrex 32x"],
+    funciones: [
+      "Medición de ruido ambiental",
+      "Análisis de calidad del aire",
+      "Monitoreo meteorológico",
+      "Muestreo de material particulado",
+      "Georreferenciación"
+    ]
+  };
+
+  // Función para obtener opciones únicas (sin duplicados con los ya agregados)
+  const getOpcionesDisponibles = (opciones: string[], yaUsados: string[]) => {
+    return opciones.filter(opcion => !yaUsados.includes(opcion));
+  };
+
   const agregarPersonal = () => {
     if (nuevoPersonal.nombre.trim() && nuevoPersonal.cargo.trim()) {
-      onDataChange({
-        ...data,
-        personal: [...data.personal, { ...nuevoPersonal }]
-      });
-      setNuevoPersonal({
-        nombre: "",
-        cargo: "",
-        experiencia: "",
-        responsabilidades: ""
-      });
+      // Verificar que no esté duplicado
+      const yaExiste = data.personal.some(p => 
+        p.nombre === nuevoPersonal.nombre && p.cargo === nuevoPersonal.cargo
+      );
+      
+      if (!yaExiste) {
+        onDataChange({
+          ...data,
+          personal: [...data.personal, { ...nuevoPersonal }]
+        });
+        setNuevoPersonal({
+          nombre: "",
+          cargo: "",
+          experiencia: "",
+          responsabilidades: ""
+        });
+      }
     }
   };
 
@@ -54,17 +104,31 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
 
   const agregarEquipo = () => {
     if (nuevoEquipo.nombre.trim() && nuevoEquipo.marca.trim()) {
-      onDataChange({
-        ...data,
-        equipos: [...data.equipos, { ...nuevoEquipo }]
-      });
-      setNuevoEquipo({
-        nombre: "",
-        marca: "",
-        modelo: "",
-        calibracion: "",
-        funcion: ""
-      });
+      // Verificar que no esté duplicado
+      const yaExiste = data.equipos.some(e => 
+        e.nombre === nuevoEquipo.nombre && e.marca === nuevoEquipo.marca && e.modelo === nuevoEquipo.modelo
+      );
+      
+      if (!yaExiste) {
+        const equipoFinal = {
+          ...nuevoEquipo,
+          calibracion: fechaCalibracion ? format(fechaCalibracion, "dd/MM/yyyy") : ""
+        };
+        
+        onDataChange({
+          ...data,
+          equipos: [...data.equipos, equipoFinal]
+        });
+        
+        setNuevoEquipo({
+          nombre: "",
+          marca: "",
+          modelo: "",
+          calibracion: "",
+          funcion: ""
+        });
+        setFechaCalibracion(undefined);
+      }
     }
   };
 
@@ -88,36 +152,63 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Nombre *</Label>
-              <Input 
-                placeholder="Nombre completo"
-                value={nuevoPersonal.nombre}
-                onChange={(e) => setNuevoPersonal({ ...nuevoPersonal, nombre: e.target.value })}
-              />
+              <Select onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, nombre: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar nombre" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getOpcionesDisponibles(opcionesPersonal.nombres, data.personal.map(p => p.nombre)).map((nombre) => (
+                    <SelectItem key={nombre} value={nombre}>
+                      {nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Cargo *</Label>
-              <Input 
-                placeholder="Cargo o posición"
-                value={nuevoPersonal.cargo}
-                onChange={(e) => setNuevoPersonal({ ...nuevoPersonal, cargo: e.target.value })}
-              />
+              <Select onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, cargo: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar cargo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {opcionesPersonal.cargos.map((cargo) => (
+                    <SelectItem key={cargo} value={cargo}>
+                      {cargo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Experiencia</Label>
-              <Input 
-                placeholder="Años de experiencia"
-                value={nuevoPersonal.experiencia}
-                onChange={(e) => setNuevoPersonal({ ...nuevoPersonal, experiencia: e.target.value })}
-              />
+              <Select onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, experiencia: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar experiencia" />
+                </SelectTrigger>
+                <SelectContent>
+                  {opcionesPersonal.experiencias.map((exp) => (
+                    <SelectItem key={exp} value={exp}>
+                      {exp}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Responsabilidades</Label>
-              <Textarea 
-                placeholder="Responsabilidades en el proyecto"
-                value={nuevoPersonal.responsabilidades}
-                onChange={(e) => setNuevoPersonal({ ...nuevoPersonal, responsabilidades: e.target.value })}
-                rows={2}
-              />
+              <Select onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, responsabilidades: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar responsabilidades" />
+                </SelectTrigger>
+                <SelectContent>
+                  {opcionesPersonal.responsabilidades.map((resp) => (
+                    <SelectItem key={resp} value={resp}>
+                      {resp}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <Button type="button" onClick={agregarPersonal} className="w-full">
@@ -171,44 +262,93 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Nombre del Equipo *</Label>
-              <Input 
-                placeholder="Nombre del equipo"
-                value={nuevoEquipo.nombre}
-                onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, nombre: e.target.value })}
-              />
+              <Select onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, nombre: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar equipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getOpcionesDisponibles(opcionesEquipos.nombres, data.equipos.map(e => e.nombre)).map((equipo) => (
+                    <SelectItem key={equipo} value={equipo}>
+                      {equipo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Marca *</Label>
-              <Input 
-                placeholder="Marca del equipo"
-                value={nuevoEquipo.marca}
-                onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, marca: e.target.value })}
-              />
+              <Select onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, marca: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar marca" />
+                </SelectTrigger>
+                <SelectContent>
+                  {opcionesEquipos.marcas.map((marca) => (
+                    <SelectItem key={marca} value={marca}>
+                      {marca}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Modelo</Label>
-              <Input 
-                placeholder="Modelo del equipo"
-                value={nuevoEquipo.modelo}
-                onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, modelo: e.target.value })}
-              />
+              <Select onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, modelo: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar modelo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {opcionesEquipos.modelos.map((modelo) => (
+                    <SelectItem key={modelo} value={modelo}>
+                      {modelo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
-              <Label>Calibración</Label>
-              <Input 
-                placeholder="Fecha de calibración"
-                value={nuevoEquipo.calibracion}
-                onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, calibracion: e.target.value })}
-              />
+              <Label>Fecha de Calibración</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !fechaCalibracion && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {fechaCalibracion ? (
+                      format(fechaCalibracion, "PPP", { locale: es })
+                    ) : (
+                      <span>Seleccionar fecha</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={fechaCalibracion}
+                    onSelect={setFechaCalibracion}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label>Función</Label>
-              <Textarea 
-                placeholder="Función del equipo en el proyecto"
-                value={nuevoEquipo.funcion}
-                onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, funcion: e.target.value })}
-                rows={2}
-              />
+              <Select onValueChange={(value) => setNuevoEquipo({ ...nuevoEquipo, funcion: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar función" />
+                </SelectTrigger>
+                <SelectContent>
+                  {opcionesEquipos.funciones.map((funcion) => (
+                    <SelectItem key={funcion} value={funcion}>
+                      {funcion}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <Button type="button" onClick={agregarEquipo} className="w-full">
