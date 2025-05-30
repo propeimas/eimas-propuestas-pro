@@ -186,7 +186,14 @@ export default function NuevaPropuesta() {
     if (!formData.telefono) errors.push("Teléfono es requerido");
     if (!formData.email) errors.push("Email es requerido");
     if (!formData.descripcionServicio) errors.push("Descripción del servicio es requerida");
-    if (!formData.valorPropuesta || formData.valorPropuesta <= 0) errors.push("Valor de propuesta debe ser mayor a 0");
+    
+    // Validar valor de propuesta: considerar tanto el valor manual como el desglose de costos
+    const tieneValorManual = formData.valorPropuesta && formData.valorPropuesta > 0;
+    const tieneDesgloseCostos = desgloseCostos.items.length > 0 && desgloseCostos.total > 0;
+    
+    if (!tieneValorManual && !tieneDesgloseCostos) {
+      errors.push("Debe ingresar un valor de propuesta o agregar ítems al desglose de costos");
+    }
     
     return errors;
   };
@@ -243,9 +250,13 @@ export default function NuevaPropuesta() {
 
       const codigoPropuesta = generateProposalCode();
       
+      // Usar el valor del desglose si está disponible, sino el valor manual
+      const valorFinal = desgloseCostos.total > 0 ? desgloseCostos.total : (formData.valorPropuesta || 0);
+      
       const propuesta: Propuesta = {
         ...formData as Propuesta,
         codigoPropuesta,
+        valorPropuesta: valorFinal,
         fechaRecepcion: fechaRecepcion ? fechaRecepcion.toISOString().split('T')[0] : '',
         fechaAprobacion: fechaAprobacion ? fechaAprobacion.toISOString().split('T')[0] : '',
         mesAproximadoServicio: mesServicio ? mesServicio.toISOString().split('T')[0] : '',
@@ -311,9 +322,13 @@ export default function NuevaPropuesta() {
     
     const codigoPropuesta = generateProposalCode();
     
+    // Usar el valor del desglose si está disponible, sino el valor manual
+    const valorFinal = desgloseCostos.total > 0 ? desgloseCostos.total : (formData.valorPropuesta || 0);
+    
     const propuesta: Propuesta = {
       ...formData as Propuesta,
       codigoPropuesta,
+      valorPropuesta: valorFinal,
       fechaRecepcion: fechaRecepcion ? fechaRecepcion.toISOString().split('T')[0] : '',
       fechaAprobacion: fechaAprobacion ? fechaAprobacion.toISOString().split('T')[0] : '',
       mesAproximadoServicio: mesServicio ? mesServicio.toISOString().split('T')[0] : '',
