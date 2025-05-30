@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Users, Trash2, CalendarIcon } from "lucide-react";
+import { Plus, Users, Trash2, CalendarIcon, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { PersonalEquipo } from "@/types/proposal";
+import { getStoredPersonal, addPersonalToStorage, PersonalData } from "@/services/personalStorage";
+import { useToast } from "@/hooks/use-toast";
 
 interface PersonalEquipoFormProps {
   data: PersonalEquipo;
@@ -21,12 +22,15 @@ interface PersonalEquipoFormProps {
 }
 
 export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormProps) {
+  const { toast } = useToast();
+  
   // Estados para el personal
   const [nuevoPersonal, setNuevoPersonal] = useState({
     nombre: "",
     cargo: "",
     experiencia: "",
-    responsabilidades: ""
+    responsabilidades: "",
+    profesion: ""
   });
 
   // Estados para equipos
@@ -41,18 +45,32 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
   // Estado para fecha de calibración
   const [fechaCalibracion, setFechaCalibracion] = useState<Date>();
 
+  // Estado para personal almacenado
+  const [personalAlmacenado, setPersonalAlmacenado] = useState<PersonalData[]>([]);
+
+  // Modo de entrada: 'manual' o 'seleccion'
+  const [modoEntrada, setModoEntrada] = useState<'manual' | 'seleccion'>('seleccion');
+
+  // Cargar personal almacenado al montar el componente
+  useEffect(() => {
+    setPersonalAlmacenado(getStoredPersonal());
+  }, []);
+
   // Listas de opciones predefinidas
   const opcionesPersonal = {
-    nombres: ["Juan Pérez", "María García", "Carlos Rodríguez", "Ana López", "Miguel Torres"],
-    cargos: ["Ingeniero Ambiental", "Técnico en Monitoreo", "Coordinador de Proyecto", "Analista de Laboratorio", "Supervisor de Campo"],
+    cargos: ["Ingeniero Ambiental", "Técnico en Monitoreo", "Coordinador de Proyecto", "Analista de Laboratorio", "Supervisor de Campo", "Ingeniero Civil", "Biólogo", "Químico"],
     experiencias: ["1-2 años", "3-5 años", "5-10 años", "10+ años"],
     responsabilidades: [
       "Coordinación general del proyecto",
       "Toma de muestras en campo",
       "Análisis de laboratorio",
       "Elaboración de informes",
-      "Supervisión técnica"
-    ]
+      "Supervisión técnica",
+      "Control de calidad",
+      "Gestión de equipos",
+      "Capacitación de personal"
+    ],
+    profesiones: ["Ingeniería Ambiental", "Ingeniería Civil", "Biología", "Química", "Ingeniería Sanitaria", "Tecnología Ambiental"]
   };
 
   const opcionesEquipos = {
@@ -73,25 +91,73 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
     return opciones.filter(opcion => !yaUsados.includes(opcion));
   };
 
-  const agregarPersonal = () => {
+  const agregarPersonalManual = () => {
     if (nuevoPersonal.nombre.trim() && nuevoPersonal.cargo.trim()) {
-      // Verificar que no esté duplicado
+      // Verificar que no esté duplicado en la propuesta actual
       const yaExiste = data.personal.some(p => 
         p.nombre === nuevoPersonal.nombre && p.cargo === nuevoPersonal.cargo
       );
       
       if (!yaExiste) {
+        // Agregar a la propuesta actual
         onDataChange({
           ...data,
           personal: [...data.personal, { ...nuevoPersonal }]
         });
+
+        // Intentar agregar al almacén reutilizable
+        const agregado = addPersonalToStorage(nuevoPersonal);
+        if (agregado) {
+          setPersonalAlmacenado(getStoredPersonal());
+          toast({
+            title: "Personal agregado",
+            description: "El personal se agregó a la propuesta y a la lista reutilizable",
+          });
+        } else {
+          toast({
+            title: "Personal agregado a la propuesta",
+            description: "El personal ya existía en la lista reutilizable",
+          });
+        }
+        
         setNuevoPersonal({
           nombre: "",
           cargo: "",
           experiencia: "",
-          responsabilidades: ""
+          responsabilidades: "",
+          profesion: ""
+        });
+      } else {
+        toast({
+          title: "Personal duplicado",
+          description: "Este personal ya está agregado a la propuesta",
+          variant: "destructive"
         });
       }
+    }
+  };
+
+  const agregarPersonalExistente = (personal: PersonalData) => {
+    // Verificar que no esté duplicado en la propuesta actual
+    const yaExiste = data.personal.some(p => 
+      p.nombre === personal.nombre && p.cargo === personal.cargo
+    );
+    
+    if (!yaExiste) {
+      onDataChange({
+        ...data,
+        personal: [...data.personal, personal]
+      });
+      toast({
+        title: "Personal agregado",
+        description: "Personal agregado desde la lista reutilizable",
+      });
+    } else {
+      toast({
+        title: "Personal duplicado",
+        description: "Este personal ya está agregado a la propuesta",
+        variant: "destructive"
+      });
     }
   };
 
@@ -149,118 +215,186 @@ export function PersonalEquipoForm({ data, onDataChange }: PersonalEquipoFormPro
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Nombre *</Label>
-              <Select 
-                value={nuevoPersonal.nombre} 
-                onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, nombre: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar nombre" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getOpcionesDisponibles(opcionesPersonal.nombres, data.personal.map(p => p.nombre)).map((nombre) => (
-                    <SelectItem key={nombre} value={nombre}>
-                      {nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Cargo *</Label>
-              <Select 
-                value={nuevoPersonal.cargo} 
-                onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, cargo: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar cargo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {opcionesPersonal.cargos.map((cargo) => (
-                    <SelectItem key={cargo} value={cargo}>
-                      {cargo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Experiencia</Label>
-              <Select 
-                value={nuevoPersonal.experiencia} 
-                onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, experiencia: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar experiencia" />
-                </SelectTrigger>
-                <SelectContent>
-                  {opcionesPersonal.experiencias.map((exp) => (
-                    <SelectItem key={exp} value={exp}>
-                      {exp}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Responsabilidades</Label>
-              <Select 
-                value={nuevoPersonal.responsabilidades} 
-                onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, responsabilidades: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar responsabilidades" />
-                </SelectTrigger>
-                <SelectContent>
-                  {opcionesPersonal.responsabilidades.map((resp) => (
-                    <SelectItem key={resp} value={resp}>
-                      {resp}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Selector de modo de entrada */}
+          <div className="flex space-x-4 mb-4">
+            <Button
+              type="button"
+              variant={modoEntrada === 'seleccion' ? 'default' : 'outline'}
+              onClick={() => setModoEntrada('seleccion')}
+              className="flex items-center space-x-2"
+            >
+              <Users className="w-4 h-4" />
+              <span>Seleccionar Existente</span>
+            </Button>
+            <Button
+              type="button"
+              variant={modoEntrada === 'manual' ? 'default' : 'outline'}
+              onClick={() => setModoEntrada('manual')}
+              className="flex items-center space-x-2"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Agregar Nuevo</span>
+            </Button>
           </div>
-          <Button type="button" onClick={agregarPersonal} className="w-full">
-            <Plus className="w-4 h-4 mr-2" />
-            Agregar Personal
-          </Button>
+
+          {modoEntrada === 'seleccion' && (
+            <div className="space-y-4">
+              <h4 className="font-medium">Seleccionar Personal Existente</h4>
+              {personalAlmacenado.length === 0 ? (
+                <p className="text-gray-500">No hay personal guardado. Agregue nuevo personal para crear la lista reutilizable.</p>
+              ) : (
+                <div className="grid gap-2">
+                  {personalAlmacenado.map((personal, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <span className="font-medium">{personal.nombre}</span>
+                        <span className="text-gray-500 ml-2">- {personal.cargo}</span>
+                        {personal.experiencia && <span className="text-sm text-gray-400 ml-2">({personal.experiencia})</span>}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => agregarPersonalExistente(personal)}
+                      >
+                        Agregar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {modoEntrada === 'manual' && (
+            <div className="space-y-4">
+              <h4 className="font-medium">Agregar Nuevo Personal</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nombre Completo *</Label>
+                  <Input
+                    placeholder="Nombre completo"
+                    value={nuevoPersonal.nombre}
+                    onChange={(e) => setNuevoPersonal({ ...nuevoPersonal, nombre: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cargo *</Label>
+                  <Select 
+                    value={nuevoPersonal.cargo} 
+                    onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, cargo: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar cargo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {opcionesPersonal.cargos.map((cargo) => (
+                        <SelectItem key={cargo} value={cargo}>
+                          {cargo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Profesión</Label>
+                  <Select 
+                    value={nuevoPersonal.profesion} 
+                    onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, profesion: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar profesión" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {opcionesPersonal.profesiones.map((profesion) => (
+                        <SelectItem key={profesion} value={profesion}>
+                          {profesion}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Experiencia</Label>
+                  <Select 
+                    value={nuevoPersonal.experiencia} 
+                    onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, experiencia: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Años de experiencia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {opcionesPersonal.experiencias.map((exp) => (
+                        <SelectItem key={exp} value={exp}>
+                          {exp}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Responsabilidades</Label>
+                  <Select 
+                    value={nuevoPersonal.responsabilidades} 
+                    onValueChange={(value) => setNuevoPersonal({ ...nuevoPersonal, responsabilidades: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar responsabilidades" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {opcionesPersonal.responsabilidades.map((resp) => (
+                        <SelectItem key={resp} value={resp}>
+                          {resp}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button type="button" onClick={agregarPersonalManual} className="w-full">
+                <Plus className="w-4 h-4 mr-2" />
+                Agregar Personal
+              </Button>
+            </div>
+          )}
 
           {data.personal.length > 0 && (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Cargo</TableHead>
-                    <TableHead>Experiencia</TableHead>
-                    <TableHead>Responsabilidades</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.personal.map((persona, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{persona.nombre}</TableCell>
-                      <TableCell>{persona.cargo}</TableCell>
-                      <TableCell>{persona.experiencia}</TableCell>
-                      <TableCell>{persona.responsabilidades}</TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => eliminarPersonal(index)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
+            <div className="space-y-2">
+              <h4 className="font-medium">Personal Agregado a esta Propuesta</h4>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Cargo</TableHead>
+                      <TableHead>Profesión</TableHead>
+                      <TableHead>Experiencia</TableHead>
+                      <TableHead>Responsabilidades</TableHead>
+                      <TableHead>Acciones</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {data.personal.map((persona, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{persona.nombre}</TableCell>
+                        <TableCell>{persona.cargo}</TableCell>
+                        <TableCell>{persona.profesion || 'No especificada'}</TableCell>
+                        <TableCell>{persona.experiencia}</TableCell>
+                        <TableCell>{persona.responsabilidades}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => eliminarPersonal(index)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>

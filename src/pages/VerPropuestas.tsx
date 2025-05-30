@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,29 +10,37 @@ import { Search, Plus, Edit, Trash, FileText, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { downloadPDF } from "@/services/pdfService";
+import { getStoredProposals, deleteStoredProposal, StoredProposal } from "@/services/proposalStorage";
 
 export default function VerPropuestas() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [propuestas, setPropuestas] = useState<StoredProposal[]>([]);
   const { toast } = useToast();
 
-  // Datos de ejemplo - se conectará con Firestore
-  const propuestas = [
-    {
-      id: "1",
-      codigoPropuesta: "P-EMPRESA1-29052025-01",
-      fechaRecepcion: "2025-05-29",
-      empresaCliente: "Empresa Ejemplo S.A.S",
-      tipoServicio: "Monitoreo de calidad del aire",
-      valorPropuesta: 15000000,
-      estado: "PENDIENTE",
-      nombreSolicitante: "Juan Pérez",
-      telefono: "300 123 4567",
-      email: "juan@empresa.com",
-      objetivo: "Realizar monitoreo de calidad del aire para cumplimiento normativo",
-      alcance: "Monitoreo durante 30 días en 3 puntos estratégicos"
-    },
-    // Más propuestas se cargarán desde Firestore
-  ];
+  // Cargar propuestas guardadas al montar el componente
+  useEffect(() => {
+    const loadProposals = () => {
+      const storedProposals = getStoredProposals();
+      setPropuestas(storedProposals);
+    };
+
+    loadProposals();
+
+    // Escuchar cambios en localStorage para actualizar la lista
+    const handleStorageChange = () => {
+      loadProposals();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // También verificar periódicamente por si hay cambios en la misma pestaña
+    const interval = setInterval(loadProposals, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   const getEstadoBadge = (estado: string) => {
     const variants = {
@@ -57,114 +65,13 @@ export default function VerPropuestas() {
     }).format(value);
   };
 
-  const handleDownloadPDF = async (propuesta: any) => {
+  const handleDownloadPDF = async (propuestaData: StoredProposal) => {
     try {
-      // Datos de ejemplo para la propuesta completa
-      const propuestaCompleta = {
-        propuesta: {
-          ...propuesta,
-          nombreReceptor: "Ana García",
-          municipio: "Bogotá",
-          descripcionServicio: "Monitoreo completo de calidad del aire",
-          seguimientoObservaciones: "Propuesta en proceso de revisión",
-          duracion: 30,
-          mesAproximadoServicio: "2025-06-01",
-          fechaAprobacion: "",
-          medioSolicitud: "Email",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        caracteristicas: {
-          propuestaId: propuesta.id,
-          metodologia: "Metodología basada en normativa EPA y Resolución 2254 de 2017",
-          equiposUtilizados: ["Monitor de Partículas PM2.5", "Monitor de Partículas PM10", "Estación Meteorológica"],
-          parametrosAnalizar: ["PM2.5", "PM10", "Velocidad del viento", "Dirección del viento"],
-          normasReferencia: ["Resolución 2254 de 2017", "EPA 40 CFR Part 58"],
-          procedimientos: "Instalación de equipos, calibración diaria, toma de datos cada 15 minutos",
-          controlCalidad: "Verificación diaria de equipos, comparación con patrones certificados"
-        },
-        personal: {
-          propuestaId: propuesta.id,
-          personal: [
-            {
-              nombre: "Dr. Carlos Martínez",
-              cargo: "Director Técnico",
-              experiencia: "15 años",
-              responsabilidades: "Supervisión técnica y validación de resultados"
-            },
-            {
-              nombre: "Ing. María López",
-              cargo: "Ingeniera de Campo",
-              experiencia: "8 años",
-              responsabilidades: "Instalación y mantenimiento de equipos"
-            }
-          ],
-          equipos: [
-            {
-              nombre: "Monitor de Partículas",
-              marca: "Thermo Fisher",
-              modelo: "SHARP 5030",
-              calibracion: "2024-12-15",
-              funcion: "Medición continua de PM2.5 y PM10"
-            },
-            {
-              nombre: "Estación Meteorológica",
-              marca: "Davis Instruments",
-              modelo: "Vantage Pro2",
-              calibracion: "2024-11-20",
-              funcion: "Registro de condiciones meteorológicas"
-            }
-          ]
-        },
-        costos: {
-          propuestaId: propuesta.id,
-          items: [
-            {
-              concepto: "Monitoreo PM2.5 y PM10",
-              cantidad: 30,
-              valorUnitario: 350000,
-              valorTotal: 10500000
-            },
-            {
-              concepto: "Análisis de datos meteorológicos",
-              cantidad: 1,
-              valorUnitario: 2500000,
-              valorTotal: 2500000
-            },
-            {
-              concepto: "Informe técnico",
-              cantidad: 1,
-              valorUnitario: 2000000,
-              valorTotal: 2000000
-            }
-          ],
-          subtotal: 15000000,
-          iva: 2850000,
-          total: 17850000
-        },
-        configuracion: {
-          nombreEmpresa: "EIMAS - Estudios e Investigaciones en Monitoreo Ambiental y Sanitario",
-          telefono: "+57 300 123 4567",
-          direccion: "Calle 123 #45-67, Bogotá, Colombia",
-          email: "info@eimas.com.co",
-          resolucion: "Resolución 1234 del 2024 - Ministerio de Ambiente",
-          website: "www.eimas.com.co",
-          compromisos: [
-            "Entrega puntual del informe técnico",
-            "Verificación con laboratorio acreditado ante IDEAM",
-            "Uso de equipos calibrados y certificados",
-            "Personal técnico certificado y calificado",
-            "Cumplimiento estricto de la normatividad vigente",
-            "Soporte técnico post-entrega del informe"
-          ]
-        }
-      };
-
-      await downloadPDF(propuestaCompleta);
+      await downloadPDF(propuestaData);
 
       toast({
         title: "PDF descargado exitosamente",
-        description: `Se ha descargado la propuesta ${propuesta.codigoPropuesta}`,
+        description: `Se ha descargado la propuesta ${propuestaData.propuesta.codigoPropuesta}`,
       });
     } catch (error) {
       toast({
@@ -175,10 +82,29 @@ export default function VerPropuestas() {
     }
   };
 
-  const filteredPropuestas = propuestas.filter(propuesta =>
-    propuesta.empresaCliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    propuesta.codigoPropuesta.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    propuesta.tipoServicio.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleDeleteProposal = (codigoPropuesta: string) => {
+    if (window.confirm('¿Está seguro de que desea eliminar esta propuesta?')) {
+      const success = deleteStoredProposal(codigoPropuesta);
+      if (success) {
+        setPropuestas(prev => prev.filter(p => p.propuesta.codigoPropuesta !== codigoPropuesta));
+        toast({
+          title: "Propuesta eliminada",
+          description: "La propuesta ha sido eliminada exitosamente",
+        });
+      } else {
+        toast({
+          title: "Error al eliminar",
+          description: "No se pudo eliminar la propuesta",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const filteredPropuestas = propuestas.filter(item =>
+    item.propuesta.empresaCliente?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.propuesta.codigoPropuesta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.propuesta.tipoServicio?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -194,7 +120,7 @@ export default function VerPropuestas() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <CardTitle className="flex items-center space-x-2">
                 <FileText className="w-5 h-5 text-secondary" />
-                <span>Lista de Propuestas</span>
+                <span>Lista de Propuestas ({propuestas.length})</span>
               </CardTitle>
               
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
@@ -223,17 +149,22 @@ export default function VerPropuestas() {
               <div className="text-center py-12">
                 <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                  No hay propuestas registradas
+                  {propuestas.length === 0 ? "No hay propuestas registradas" : "No se encontraron propuestas"}
                 </h3>
                 <p className="text-gray-500 mb-6">
-                  Comienza creando tu primera propuesta de servicios de ingeniería ambiental
+                  {propuestas.length === 0 
+                    ? "Comienza creando tu primera propuesta de servicios de ingeniería ambiental" 
+                    : "Intenta con otros términos de búsqueda"
+                  }
                 </p>
-                <Button asChild className="eimas-gradient">
-                  <Link to="/nueva-propuesta">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Crear Primera Propuesta
-                  </Link>
-                </Button>
+                {propuestas.length === 0 && (
+                  <Button asChild className="eimas-gradient">
+                    <Link to="/nueva-propuesta">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Crear Primera Propuesta
+                    </Link>
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -250,19 +181,22 @@ export default function VerPropuestas() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredPropuestas.map((propuesta) => (
-                      <TableRow key={propuesta.id} className="hover:bg-gray-50">
+                    {filteredPropuestas.map((item) => (
+                      <TableRow key={item.propuesta.codigoPropuesta} className="hover:bg-gray-50">
                         <TableCell className="font-medium">
-                          {propuesta.codigoPropuesta}
+                          {item.propuesta.codigoPropuesta}
                         </TableCell>
                         <TableCell>
-                          {new Date(propuesta.fechaRecepcion).toLocaleDateString('es-ES')}
+                          {item.propuesta.fechaRecepcion ? 
+                            new Date(item.propuesta.fechaRecepcion).toLocaleDateString('es-ES') : 
+                            'No definida'
+                          }
                         </TableCell>
-                        <TableCell>{propuesta.empresaCliente}</TableCell>
-                        <TableCell>{propuesta.tipoServicio}</TableCell>
-                        <TableCell>{formatCurrency(propuesta.valorPropuesta)}</TableCell>
+                        <TableCell>{item.propuesta.empresaCliente || 'No definida'}</TableCell>
+                        <TableCell>{item.propuesta.tipoServicio || 'No definido'}</TableCell>
+                        <TableCell>{formatCurrency(item.propuesta.valorPropuesta || 0)}</TableCell>
                         <TableCell>
-                          {getEstadoBadge(propuesta.estado)}
+                          {getEstadoBadge(item.propuesta.estado || 'PENDIENTE')}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
@@ -270,7 +204,7 @@ export default function VerPropuestas() {
                               size="sm"
                               variant="outline"
                               title="Descargar PDF"
-                              onClick={() => handleDownloadPDF(propuesta)}
+                              onClick={() => handleDownloadPDF(item)}
                             >
                               <Download className="w-4 h-4" />
                             </Button>
@@ -278,6 +212,12 @@ export default function VerPropuestas() {
                               size="sm"
                               variant="outline"
                               title="Editar propuesta"
+                              onClick={() => {
+                                toast({
+                                  title: "Funcionalidad en desarrollo",
+                                  description: "La edición de propuestas estará disponible próximamente",
+                                });
+                              }}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -286,6 +226,7 @@ export default function VerPropuestas() {
                               variant="outline"
                               title="Eliminar propuesta"
                               className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDeleteProposal(item.propuesta.codigoPropuesta)}
                             >
                               <Trash className="w-4 h-4" />
                             </Button>
