@@ -1,234 +1,243 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Edit, Trash, FileText, Download } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Search, Eye, Edit2, Trash2, Download, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { downloadPDF } from "@/services/pdfService";
 import { getStoredProposals, deleteStoredProposal, StoredProposal } from "@/services/proposalStorage";
+import { downloadPDF } from "@/services/pdfService";
 
 export default function VerPropuestas() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [propuestas, setPropuestas] = useState<StoredProposal[]>([]);
   const { toast } = useToast();
+  const [propuestas, setPropuestas] = useState<StoredProposal[]>([]);
+  const [filteredPropuestas, setFilteredPropuestas] = useState<StoredProposal[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Cargar propuestas guardadas al montar el componente
+  // Cargar propuestas al montar el componente
   useEffect(() => {
-    const loadProposals = () => {
-      const storedProposals = getStoredProposals();
-      setPropuestas(storedProposals);
-    };
-
-    loadProposals();
-
-    // Escuchar cambios en localStorage para actualizar la lista
-    const handleStorageChange = () => {
-      loadProposals();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    // También verificar periódicamente por si hay cambios en la misma pestaña
-    const interval = setInterval(loadProposals, 1000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
+    loadPropuestas();
   }, []);
 
-  const getEstadoBadge = (estado: string) => {
-    const variants = {
-      'PENDIENTE': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      'EN PROCESO': 'bg-blue-100 text-blue-800 border-blue-300', 
-      'ACEPTADA': 'bg-green-100 text-green-800 border-green-300',
-      'RECHAZADA': 'bg-red-100 text-red-800 border-red-300'
-    };
-
-    return (
-      <Badge className={`${variants[estado as keyof typeof variants]} border`}>
-        {estado}
-      </Badge>
-    );
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const handleDownloadPDF = async (propuestaData: StoredProposal) => {
+  const loadPropuestas = async () => {
+    setLoading(true);
     try {
-      await downloadPDF(propuestaData);
-
+      const storedProposals = await getStoredProposals();
+      setPropuestas(storedProposals);
+      setFilteredPropuestas(storedProposals);
+    } catch (error) {
+      console.error('Error loading propuestas:', error);
       toast({
-        title: "PDF descargado exitosamente",
-        description: `Se ha descargado la propuesta ${propuestaData.propuesta.codigoPropuesta}`,
+        title: "Error",
+        description: "No se pudieron cargar las propuestas",
+        variant: "destructive"
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filtrar propuestas por término de búsqueda
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredPropuestas(propuestas);
+    } else {
+      const filtered = propuestas.filter(item => 
+        item.propuesta.codigoPropuesta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.propuesta.empresaCliente?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.propuesta.tipoServicio?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.propuesta.nombreSolicitante?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredPropuestas(filtered);
+    }
+  }, [searchTerm, propuestas]);
+
+  const handleDelete = async (codigoPropuesta: string) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar esta propuesta?')) {
+      return;
+    }
+
+    try {
+      const success = await deleteStoredProposal(codigoPropuesta);
+      if (success) {
+        toast({
+          title: "Propuesta eliminada",
+          description: `La propuesta ${codigoPropuesta} ha sido eliminada exitosamente`,
+        });
+        // Recargar la lista
+        await loadPropuestas();
+      } else {
+        throw new Error('No se pudo eliminar la propuesta');
+      }
     } catch (error) {
       toast({
-        title: "Error al descargar PDF",
-        description: "Hubo un problema al generar el archivo PDF",
+        title: "Error al eliminar",
+        description: "No se pudo eliminar la propuesta",
         variant: "destructive"
       });
     }
   };
 
-  const handleDeleteProposal = (codigoPropuesta: string) => {
-    if (window.confirm('¿Está seguro de que desea eliminar esta propuesta?')) {
-      const success = deleteStoredProposal(codigoPropuesta);
-      if (success) {
-        setPropuestas(prev => prev.filter(p => p.propuesta.codigoPropuesta !== codigoPropuesta));
-        toast({
-          title: "Propuesta eliminada",
-          description: "La propuesta ha sido eliminada exitosamente",
-        });
-      } else {
-        toast({
-          title: "Error al eliminar",
-          description: "No se pudo eliminar la propuesta",
-          variant: "destructive"
-        });
-      }
+  const handleDownloadPDF = async (propuestaData: StoredProposal) => {
+    try {
+      // Configuración de empresa ejemplo
+      const configuracion = {
+        nombreEmpresa: "EIMAS - Estudios e Investigaciones en Monitoreo Ambiental y Sanitario",
+        telefono: "+57 300 123 4567",
+        direccion: "Calle 123 #45-67, Bogotá, Colombia",
+        email: "info@eimas.com.co",
+        resolucion: "Resolución 1234 del 2024",
+        compromisos: [
+          "Entrega puntual del informe",
+          "Verificación con laboratorio acreditado",
+          "Uso de equipos calibrados",
+          "Personal certificado y calificado",
+          "Cumplimiento de normatividad vigente"
+        ]
+      };
+
+      await downloadPDF({
+        propuesta: propuestaData.propuesta,
+        caracteristicas: propuestaData.caracteristicas,
+        personal: propuestaData.personal,
+        costos: propuestaData.costos,
+        configuracion
+      });
+
+      toast({
+        title: "PDF descargado",
+        description: `PDF de la propuesta ${propuestaData.propuesta.codigoPropuesta} descargado exitosamente`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error al generar PDF",
+        description: "No se pudo generar el archivo PDF",
+        variant: "destructive"
+      });
     }
   };
 
-  const filteredPropuestas = propuestas.filter(item =>
-    item.propuesta.empresaCliente?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.propuesta.codigoPropuesta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.propuesta.tipoServicio?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getEstadoBadgeVariant = (estado: string) => {
+    switch (estado) {
+      case 'ACEPTADA': return 'default';
+      case 'PENDIENTE': return 'secondary';
+      case 'EN PROCESO': return 'outline';
+      case 'RECHAZADA': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header 
+          title="Ver Propuestas" 
+          subtitle="Gestión y visualización de propuestas comerciales"
+        />
+        <div className="p-6">
+          <div className="text-center">Cargando propuestas...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header 
         title="Ver Propuestas" 
-        subtitle="Gestionar todas las propuestas de servicios"
+        subtitle="Gestión y visualización de propuestas comerciales"
       />
       
       <div className="p-6">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <FileText className="w-5 h-5 text-secondary" />
-                <span>Lista de Propuestas ({propuestas.length})</span>
+                <span>Listado de Propuestas</span>
               </CardTitle>
-              
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input 
-                    placeholder="Buscar propuestas..."
+            </CardHeader>
+            <CardContent>
+              {/* Barra de búsqueda */}
+              <div className="flex items-center space-x-2 mb-6">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                  <Input
+                    placeholder="Buscar por código, cliente, tipo de servicio o solicitante..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-full sm:w-64"
+                    className="pl-10"
                   />
                 </div>
-                
-                <Button asChild className="eimas-gradient">
-                  <Link to="/nueva-propuesta">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nueva Propuesta
-                  </Link>
+                <Button onClick={loadPropuestas} variant="outline">
+                  Actualizar
                 </Button>
               </div>
-            </div>
-          </CardHeader>
 
-          <CardContent>
-            {filteredPropuestas.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                  {propuestas.length === 0 ? "No hay propuestas registradas" : "No se encontraron propuestas"}
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  {propuestas.length === 0 
-                    ? "Comienza creando tu primera propuesta de servicios de ingeniería ambiental" 
-                    : "Intenta con otros términos de búsqueda"
+              {/* Tabla de propuestas */}
+              {filteredPropuestas.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {propuestas.length === 0 ? 
+                    "No hay propuestas guardadas" : 
+                    "No se encontraron propuestas con ese criterio de búsqueda"
                   }
-                </p>
-                {propuestas.length === 0 && (
-                  <Button asChild className="eimas-gradient">
-                    <Link to="/nueva-propuesta">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Crear Primera Propuesta
-                    </Link>
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
+                </div>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Código</TableHead>
-                      <TableHead>Fecha Recepción</TableHead>
-                      <TableHead>Empresa Cliente</TableHead>
+                      <TableHead>Cliente</TableHead>
                       <TableHead>Tipo de Servicio</TableHead>
-                      <TableHead>Valor</TableHead>
+                      <TableHead>Solicitante</TableHead>
                       <TableHead>Estado</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Fecha</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredPropuestas.map((item) => (
-                      <TableRow key={item.propuesta.codigoPropuesta} className="hover:bg-gray-50">
+                      <TableRow key={item.propuesta.codigoPropuesta}>
                         <TableCell className="font-medium">
                           {item.propuesta.codigoPropuesta}
                         </TableCell>
+                        <TableCell>{item.propuesta.empresaCliente}</TableCell>
+                        <TableCell>{item.propuesta.tipoServicio}</TableCell>
+                        <TableCell>{item.propuesta.nombreSolicitante}</TableCell>
+                        <TableCell>
+                          <Badge variant={getEstadoBadgeVariant(item.propuesta.estado)}>
+                            {item.propuesta.estado}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          ${item.propuesta.valorPropuesta?.toLocaleString() || '0'}
+                        </TableCell>
                         <TableCell>
                           {item.propuesta.fechaRecepcion ? 
-                            new Date(item.propuesta.fechaRecepcion).toLocaleDateString('es-ES') : 
-                            'No definida'
+                            new Date(item.propuesta.fechaRecepcion).toLocaleDateString() : 
+                            'N/A'
                           }
-                        </TableCell>
-                        <TableCell>{item.propuesta.empresaCliente || 'No definida'}</TableCell>
-                        <TableCell>{item.propuesta.tipoServicio || 'No definido'}</TableCell>
-                        <TableCell>{formatCurrency(item.propuesta.valorPropuesta || 0)}</TableCell>
-                        <TableCell>
-                          {getEstadoBadge(item.propuesta.estado || 'PENDIENTE')}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
-                            <Button
+                            <Button 
+                              variant="outline" 
                               size="sm"
-                              variant="outline"
-                              title="Descargar PDF"
                               onClick={() => handleDownloadPDF(item)}
                             >
                               <Download className="w-4 h-4" />
                             </Button>
-                            <Button
+                            <Button 
+                              variant="outline" 
                               size="sm"
-                              variant="outline"
-                              title="Editar propuesta"
-                              onClick={() => {
-                                toast({
-                                  title: "Funcionalidad en desarrollo",
-                                  description: "La edición de propuestas estará disponible próximamente",
-                                });
-                              }}
+                              onClick={() => handleDelete(item.propuesta.codigoPropuesta)}
                             >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              title="Eliminar propuesta"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() => handleDeleteProposal(item.propuesta.codigoPropuesta)}
-                            >
-                              <Trash className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -236,10 +245,10 @@ export default function VerPropuestas() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

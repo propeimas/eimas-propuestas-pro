@@ -33,6 +33,8 @@ export interface CaracteristicasTecnicas {
   normasReferencia: string[];
   procedimientos: string;
   controlCalidad: string;
+  actividad?: string;
+  metodo?: string;
 }
 
 export interface PersonalEquipo {
@@ -43,6 +45,7 @@ export interface PersonalEquipo {
     cargo: string;
     experiencia: string;
     responsabilidades: string;
+    profesion?: string;
   }[];
   equipos: {
     nombre: string;
@@ -78,4 +81,19 @@ export interface ConfiguracionEmpresa {
   firma?: string;
   website?: string;
   compromisos: string[];
+}
+
+export interface Actividad {
+  id?: string;
+  nombre: string;
+  descripcion?: string;
+  metodos?: string[];
+}
+
+export interface Metodo {
+  id?: string;
+  actividadId: string;
+  nombre: string;
+  descripcion?: string;
+  normas?: string[];
 }

@@ -1,13 +1,20 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X, Settings } from "lucide-react";
 import { CaracteristicasTecnicas } from "@/types/proposal";
+import { 
+  getActividades, 
+  getMetodosByActividad, 
+  getCalidadAire, 
+  getOloresSensivos, 
+  getRuido 
+} from "@/services/firestoreActividadesService";
 
 interface CaracteristicasTecnicasFormProps {
   data: CaracteristicasTecnicas;
@@ -18,6 +25,63 @@ export function CaracteristicasTecnicasForm({ data, onDataChange }: Caracteristi
   const [nuevoEquipo, setNuevoEquipo] = useState("");
   const [nuevoParametro, setNuevoParametro] = useState("");
   const [nuevaNorma, setNuevaNorma] = useState("");
+  
+  // Estados para actividades y métodos
+  const [actividades, setActividades] = useState<any[]>([]);
+  const [metodos, setMetodos] = useState<string[]>([]);
+  const [tipoActividad, setTipoActividad] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  // Cargar todas las actividades al montar el componente
+  useEffect(() => {
+    const cargarActividades = async () => {
+      setLoading(true);
+      try {
+        const [aireFuentes, calidadAire, olores, ruido] = await Promise.all([
+          getActividades(),
+          getCalidadAire(),
+          getOloresSensivos(),
+          getRuido()
+        ]);
+
+        const todasActividades = [
+          ...aireFuentes.map(act => ({ ...act, tipo: 'AIRE-FUENTES-FIJAS' })),
+          ...calidadAire.map(act => ({ ...act, tipo: 'CALIDAD_AIRE' })),
+          ...olores.map(act => ({ ...act, tipo: 'OLORESOFENSIVOS' })),
+          ...ruido.map(act => ({ ...act, tipo: 'RUIDO' }))
+        ];
+
+        setActividades(todasActividades);
+      } catch (error) {
+        console.error('Error cargando actividades:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarActividades();
+  }, []);
+
+  // Cargar métodos cuando se selecciona una actividad
+  const handleActividadChange = async (actividadId: string) => {
+    const actividad = actividades.find(act => act.id === actividadId);
+    if (actividad) {
+      setTipoActividad(actividad.tipo);
+      onDataChange({ ...data, actividad: actividad.nombre, metodo: '' });
+      
+      try {
+        const metodosList = await getMetodosByActividad(actividadId);
+        setMetodos(metodosList);
+      } catch (error) {
+        console.error('Error cargando métodos:', error);
+        setMetodos([]);
+      }
+    }
+  };
+
+  const handleMetodoChange = (metodo: string) => {
+    onDataChange({ ...data, metodo });
+  };
 
   const agregarEquipo = () => {
     if (nuevoEquipo.trim()) {
@@ -79,6 +143,53 @@ export function CaracteristicasTecnicasForm({ data, onDataChange }: Caracteristi
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Selección de Actividad y Método */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Actividad</Label>
+            <Select 
+              value={data.actividad || ''} 
+              onValueChange={handleActividadChange}
+              disabled={loading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={loading ? "Cargando actividades..." : "Seleccionar actividad"} />
+              </SelectTrigger>
+              <SelectContent>
+                {actividades.map((actividad) => (
+                  <SelectItem key={actividad.id} value={actividad.id}>
+                    {actividad.nombre} ({actividad.tipo})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Método</Label>
+            <Select 
+              value={data.metodo || ''} 
+              onValueChange={handleMetodoChange}
+              disabled={!data.actividad || metodos.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={
+                  !data.actividad ? "Primero selecciona una actividad" : 
+                  metodos.length === 0 ? "No hay métodos disponibles" : 
+                  "Seleccionar método"
+                } />
+              </SelectTrigger>
+              <SelectContent>
+                {metodos.map((metodo, index) => (
+                  <SelectItem key={index} value={metodo}>
+                    {metodo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label>Metodología *</Label>
           <Textarea 
