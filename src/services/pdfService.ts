@@ -4,6 +4,7 @@ import { Propuesta, CaracteristicasTecnicas, PersonalEquipo, DesgloseCostos, Con
 import { checkPageBreak } from './pdf/pdfUtils';
 import { addPageHeader, addFooter } from './pdf/pdfLayout';
 import { addCompanyInfo, addClientInfo, addPersonalSection, addEquipmentSection, addCostsSection } from './pdf/pdfSections';
+import { getConfiguracion } from './configuracionService';
 
 export interface PropuestaCompleta {
   propuesta: Propuesta;
@@ -32,7 +33,10 @@ export const generateProposalCode = (): string => {
 };
 
 export const generatePDF = async (data: PropuestaCompleta) => {
-  const { propuesta, caracteristicas, personal, costos, configuracion } = data;
+  // Obtener configuración guardada si no se proporciona
+  const configuracion = data.configuracion || getConfiguracion();
+  
+  const { propuesta, caracteristicas, personal, costos } = data;
   
   // Crear instancia de jsPDF
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -154,7 +158,7 @@ export const generatePDF = async (data: PropuestaCompleta) => {
   }
 
   // Agregar footer a todas las páginas
-  const totalPages = (pdf as any).internal.pages.length - 1; // Fix for the build error
+  const totalPages = (pdf as any).internal.pages.length - 1;
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
     addFooter(pdf, configuracion);

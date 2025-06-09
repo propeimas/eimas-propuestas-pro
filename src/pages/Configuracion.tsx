@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,67 +8,102 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Settings, Upload, Save, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  saveConfiguracion, 
+  getConfiguracion, 
+  getDefaultConfiguracion,
+  fileToBase64 
+} from "@/services/configuracionService";
+import { ConfiguracionEmpresa } from "@/types/proposal";
 
 export default function Configuracion() {
   const { toast } = useToast();
-  const [configuracion, setConfiguracion] = useState({
-    nombreEmpresa: "EIMAS - Ingeniería Ambiental",
-    telefono: "",
-    direccion: "",
-    email: "",
-    resolucion: "",
-    website: "",
-    logo: "",
-    firma: ""
-  });
+  const [configuracion, setConfiguracion] = useState<ConfiguracionEmpresa>(getDefaultConfiguracion());
+  const [compromisos, setCompromisos] = useState<string[]>([]);
 
-  const [compromisos, setCompromisos] = useState([
-    "Entrega puntual del informe técnico",
-    "Verificación con laboratorio acreditado ante el IDEAM",
-    "Uso de equipos calibrados y certificados",
-    "Personal técnico especializado y certificado",
-    "Cumplimiento de normativa ambiental vigente",
-    "Disponibilidad para aclaraciones post-entrega"
-  ]);
+  useEffect(() => {
+    const savedConfig = getConfiguracion();
+    if (savedConfig) {
+      setConfiguracion(savedConfig);
+      setCompromisos(savedConfig.compromisos || []);
+    } else {
+      const defaultConfig = getDefaultConfiguracion();
+      setConfiguracion(defaultConfig);
+      setCompromisos(defaultConfig.compromisos);
+    }
+  }, []);
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: keyof ConfiguracionEmpresa, value: string) => {
     setConfiguracion(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Aquí se implementaría la subida del archivo
-      console.log("Logo seleccionado:", file.name);
-      toast({
-        title: "Logo seleccionado",
-        description: `Archivo: ${file.name}`,
-      });
+      try {
+        const base64 = await fileToBase64(file);
+        setConfiguracion(prev => ({
+          ...prev,
+          logo: base64
+        }));
+        toast({
+          title: "Logo cargado",
+          description: `Archivo: ${file.name}`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "No se pudo cargar el logo",
+          variant: "destructive"
+        });
+      }
     }
   };
 
-  const handleFirmaUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFirmaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Aquí se implementaría la subida del archivo
-      console.log("Firma seleccionada:", file.name);
-      toast({
-        title: "Firma seleccionada", 
-        description: `Archivo: ${file.name}`,
-      });
+      try {
+        const base64 = await fileToBase64(file);
+        setConfiguracion(prev => ({
+          ...prev,
+          firma: base64
+        }));
+        toast({
+          title: "Firma cargada",
+          description: `Archivo: ${file.name}`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "No se pudo cargar la firma",
+          variant: "destructive"
+        });
+      }
     }
   };
 
-  const handleSave = () => {
-    // Aquí se guardaría en Firestore
-    console.log("Configuración guardada:", { configuracion, compromisos });
-    toast({
-      title: "Configuración guardada",
-      description: "Los datos de la empresa han sido actualizados exitosamente",
-    });
+  const handleSave = async () => {
+    try {
+      const configToSave = {
+        ...configuracion,
+        compromisos
+      };
+      await saveConfiguracion(configToSave);
+      toast({
+        title: "Configuración guardada",
+        description: "Los datos de la empresa han sido actualizados exitosamente",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la configuración",
+        variant: "destructive"
+      });
+    }
   };
 
   const addCompromiso = () => {
@@ -144,7 +179,7 @@ export default function Configuracion() {
                 <div className="space-y-2">
                   <Label>Página Web</Label>
                   <Input 
-                    value={configuracion.website}
+                    value={configuracion.website || ''}
                     onChange={(e) => handleInputChange('website', e.target.value)}
                     placeholder="www.empresa.com"
                   />
@@ -175,7 +210,11 @@ export default function Configuracion() {
                 <div className="space-y-4">
                   <Label>Logo de la Empresa</Label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    {configuracion.logo ? (
+                      <img src={configuracion.logo} alt="Logo" className="mx-auto h-20 w-auto mb-2" />
+                    ) : (
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    )}
                     <div className="mt-4">
                       <Input
                         type="file"
@@ -188,7 +227,7 @@ export default function Configuracion() {
                         htmlFor="logo-upload"
                         className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
                       >
-                        Subir Logo
+                        {configuracion.logo ? 'Cambiar Logo' : 'Subir Logo'}
                       </Label>
                     </div>
                     <p className="mt-2 text-xs text-gray-500">
@@ -200,7 +239,11 @@ export default function Configuracion() {
                 <div className="space-y-4">
                   <Label>Firma Digital</Label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    {configuracion.firma ? (
+                      <img src={configuracion.firma} alt="Firma" className="mx-auto h-20 w-auto mb-2" />
+                    ) : (
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    )}
                     <div className="mt-4">
                       <Input
                         type="file"
@@ -213,7 +256,7 @@ export default function Configuracion() {
                         htmlFor="firma-upload"
                         className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
                       >
-                        Subir Firma
+                        {configuracion.firma ? 'Cambiar Firma' : 'Subir Firma'}
                       </Label>
                     </div>
                     <p className="mt-2 text-xs text-gray-500">

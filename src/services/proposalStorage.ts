@@ -31,8 +31,14 @@ export interface StoredProposal {
 // Guardar propuesta completa en Firestore
 export const saveCompleteProposal = async (proposalData: StoredProposal): Promise<string> => {
   try {
+    // Preparar los datos de la propuesta asegurando que tenga duracion
+    const propuestaToSave = {
+      ...proposalData.propuesta,
+      duracion: proposalData.propuesta.duracion || 0
+    };
+    
     // 1. Guardar propuesta principal
-    const proposalId = await saveProposal(proposalData.propuesta);
+    const proposalId = await saveProposal(propuestaToSave);
     
     // 2. Guardar características técnicas
     if (proposalData.caracteristicas) {
