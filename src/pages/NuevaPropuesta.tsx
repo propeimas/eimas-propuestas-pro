@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,113 +21,113 @@ import { PersonalEquipoForm } from "@/components/forms/PersonalEquipoForm";
 import { DesgloseCostosForm } from "@/components/forms/DesgloseCostosForm";
 import { downloadPDF, generateProposalCode } from "@/services/pdfService";
 import { Combobox } from "@/components/ui/combobox";
+import { saveCompleteProposal, getStoredProposal } from "@/services/proposalStorage";
 
 export default function NuevaPropuesta() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = !!id;
   
   // Estados para cada formulario
-  const [formData, setFormData] = useState<Partial<Propuesta>>(() => {
-    // Cargar datos guardados del localStorage si existen
-    const savedData = localStorage.getItem('currentProposal');
-    return savedData ? JSON.parse(savedData) : {
-      fechaRecepcion: new Date().toISOString().split('T')[0],
-      medioSolicitud: '',
-      nombreSolicitante: '',
-      nombreReceptor: '',
-      empresaCliente: '',
-      mesAproximadoServicio: '',
-      tipoServicio: '',
-      municipio: '',
-      telefono: '',
-      email: '',
-      descripcionServicio: '',
-      valorPropuesta: 0,
-      seguimientoObservaciones: '',
-      objetivo: '',
-      alcance: '',
-      estado: 'PENDIENTE'
-    };
+  const [formData, setFormData] = useState<Partial<Propuesta>>({
+    fechaRecepcion: new Date().toISOString().split('T')[0],
+    medioSolicitud: '',
+    nombreSolicitante: '',
+    nombreReceptor: '',
+    empresaCliente: '',
+    mesAproximadoServicio: '',
+    tipoServicio: '',
+    municipio: '',
+    telefono: '',
+    email: '',
+    descripcionServicio: '',
+    valorPropuesta: 0,
+    seguimientoObservaciones: '',
+    objetivo: '',
+    alcance: '',
+    estado: 'PENDIENTE'
   });
 
-  const [caracteristicas, setCaracteristicas] = useState<CaracteristicasTecnicas>(() => {
-    const saved = localStorage.getItem('currentCaracteristicas');
-    return saved ? JSON.parse(saved) : {
-      propuestaId: '',
-      metodologia: '',
-      equiposUtilizados: [],
-      parametrosAnalizar: [],
-      normasReferencia: [],
-      procedimientos: '',
-      controlCalidad: ''
-    };
+  const [caracteristicas, setCaracteristicas] = useState<CaracteristicasTecnicas>({
+    propuestaId: '',
+    metodologia: '',
+    equiposUtilizados: [],
+    parametrosAnalizar: [],
+    normasReferencia: [],
+    procedimientos: '',
+    controlCalidad: ''
   });
 
-  const [personalEquipo, setPersonalEquipo] = useState<PersonalEquipo>(() => {
-    const saved = localStorage.getItem('currentPersonalEquipo');
-    return saved ? JSON.parse(saved) : {
-      propuestaId: '',
-      personal: [],
-      equipos: []
-    };
+  const [personalEquipo, setPersonalEquipo] = useState<PersonalEquipo>({
+    propuestaId: '',
+    personal: [],
+    equipos: []
   });
 
-  const [desgloseCostos, setDesgloseCostos] = useState<DesgloseCostos>(() => {
-    const saved = localStorage.getItem('currentDesgloseCostos');
-    return saved ? JSON.parse(saved) : {
-      propuestaId: '',
-      items: [],
-      subtotal: 0,
-      iva: 0,
-      total: 0
-    };
+  const [desgloseCostos, setDesgloseCostos] = useState<DesgloseCostos>({
+    propuestaId: '',
+    items: [],
+    subtotal: 0,
+    iva: 0,
+    total: 0
   });
 
   // Estados para fechas
-  const [fechaRecepcion, setFechaRecepcion] = useState<Date>(() => {
-    const saved = localStorage.getItem('currentFechaRecepcion');
-    return saved ? new Date(saved) : undefined;
-  });
-  
-  const [fechaAprobacion, setFechaAprobacion] = useState<Date>(() => {
-    const saved = localStorage.getItem('currentFechaAprobacion');
-    return saved ? new Date(saved) : undefined;
-  });
-  
-  const [mesServicio, setMesServicio] = useState<Date>(() => {
-    const saved = localStorage.getItem('currentMesServicio');
-    return saved ? new Date(saved) : undefined;
-  });
+  const [fechaRecepcion, setFechaRecepcion] = useState<Date>(new Date());
+  const [fechaAprobacion, setFechaAprobacion] = useState<Date>();
+  const [mesServicio, setMesServicio] = useState<Date>();
 
   // Estados para tipos de servicio personalizados
-  const [tiposServicioPersonalizados, setTiposServicioPersonalizados] = useState<string[]>(() => {
-    const saved = localStorage.getItem('tiposServicioPersonalizados');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [tiposServicioPersonalizados, setTiposServicioPersonalizados] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Función para guardar datos automáticamente
-  const saveDataLocally = () => {
-    localStorage.setItem('currentProposal', JSON.stringify(formData));
-    localStorage.setItem('currentCaracteristicas', JSON.stringify(caracteristicas));
-    localStorage.setItem('currentPersonalEquipo', JSON.stringify(personalEquipo));
-    localStorage.setItem('currentDesgloseCostos', JSON.stringify(desgloseCostos));
-    
-    if (fechaRecepcion) {
-      localStorage.setItem('currentFechaRecepcion', fechaRecepcion.toISOString());
+  // Cargar datos si estamos editando
+  useEffect(() => {
+    if (isEditing && id) {
+      loadProposalData(id);
     }
-    if (fechaAprobacion) {
-      localStorage.setItem('currentFechaAprobacion', fechaAprobacion.toISOString());
+  }, [isEditing, id]);
+
+  const loadProposalData = async (proposalId: string) => {
+    setLoading(true);
+    try {
+      const proposalData = await getStoredProposal(proposalId);
+      if (proposalData) {
+        // Cargar datos principales
+        setFormData(proposalData.propuesta);
+        
+        // Cargar fechas
+        if (proposalData.propuesta.fechaRecepcion) {
+          setFechaRecepcion(new Date(proposalData.propuesta.fechaRecepcion));
+        }
+        if (proposalData.propuesta.fechaAprobacion) {
+          setFechaAprobacion(new Date(proposalData.propuesta.fechaAprobacion));
+        }
+        if (proposalData.propuesta.mesAproximadoServicio) {
+          setMesServicio(new Date(proposalData.propuesta.mesAproximadoServicio));
+        }
+        
+        // Cargar otros datos
+        setCaracteristicas(proposalData.caracteristicas);
+        setPersonalEquipo(proposalData.personal);
+        setDesgloseCostos(proposalData.costos);
+        
+        toast({
+          title: "Propuesta cargada",
+          description: "Los datos de la propuesta han sido cargados para edición",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error al cargar propuesta",
+        description: "No se pudieron cargar los datos de la propuesta",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    if (mesServicio) {
-      localStorage.setItem('currentMesServicio', mesServicio.toISOString());
-    }
-    
-    localStorage.setItem('tiposServicioPersonalizados', JSON.stringify(tiposServicioPersonalizados));
   };
-
-  // Efecto para guardar automáticamente cuando cambian los datos
-  React.useEffect(() => {
-    saveDataLocally();
-  }, [formData, caracteristicas, personalEquipo, desgloseCostos, fechaRecepcion, fechaAprobacion, mesServicio, tiposServicioPersonalizados]);
 
   const mediosSolicitud = [
     "Email",
@@ -198,17 +199,8 @@ export default function NuevaPropuesta() {
     return errors;
   };
 
-  // Función para limpiar datos guardados
-  const clearSavedData = () => {
-    localStorage.removeItem('currentProposal');
-    localStorage.removeItem('currentCaracteristicas');
-    localStorage.removeItem('currentPersonalEquipo');
-    localStorage.removeItem('currentDesgloseCostos');
-    localStorage.removeItem('currentFechaRecepcion');
-    localStorage.removeItem('currentFechaAprobacion');
-    localStorage.removeItem('currentMesServicio');
-    
-    // Reiniciar estados después de limpiar localStorage
+  // Función para limpiar formulario
+  const clearForm = () => {
     setFormData({
       fechaRecepcion: new Date().toISOString().split('T')[0],
       medioSolicitud: '',
@@ -255,32 +247,6 @@ export default function NuevaPropuesta() {
     setFechaRecepcion(new Date());
     setFechaAprobacion(undefined);
     setMesServicio(undefined);
-    
-    toast({
-      title: "Formulario limpiado",
-      description: "Se han borrado todos los datos del formulario",
-    });
-  };
-
-  // Función para guardar manualmente los datos
-  const handleSaveData = () => {
-    const errors = validateFormData();
-    
-    if (errors.length > 0) {
-      toast({
-        title: "Errores en el formulario",
-        description: errors.join(", "),
-        variant: "destructive"
-      });
-      return;
-    }
-
-    saveDataLocally();
-    
-    toast({
-      title: "Datos guardados",
-      description: "Los datos del formulario han sido guardados localmente",
-    });
   };
 
   const handleGeneratePDF = async () => {
@@ -296,7 +262,7 @@ export default function NuevaPropuesta() {
         return;
       }
 
-      const codigoPropuesta = generateProposalCode();
+      const codigoPropuesta = formData.codigoPropuesta || generateProposalCode();
       
       // Usar el valor del desglose si está disponible, sino el valor manual
       const valorFinal = desgloseCostos.total > 0 ? desgloseCostos.total : (formData.valorPropuesta || 0);
@@ -310,7 +276,7 @@ export default function NuevaPropuesta() {
         mesAproximadoServicio: mesServicio ? mesServicio.toISOString().split('T')[0] : '',
         duracion: fechaRecepcion && fechaAprobacion ? 
           Math.ceil((fechaAprobacion.getTime() - fechaRecepcion.getTime()) / (1000 * 60 * 60 * 24)) : 0,
-        createdAt: new Date().toISOString(),
+        createdAt: formData.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
@@ -365,11 +331,10 @@ export default function NuevaPropuesta() {
       return;
     }
     
+    setLoading(true);
+    
     try {
-      // Guardar datos localmente antes de procesar
-      saveDataLocally();
-      
-      const codigoPropuesta = generateProposalCode();
+      const codigoPropuesta = formData.codigoPropuesta || generateProposalCode();
       
       // Usar el valor del desglose si está disponible, sino el valor manual
       const valorFinal = desgloseCostos.total > 0 ? desgloseCostos.total : (formData.valorPropuesta || 0);
@@ -383,7 +348,7 @@ export default function NuevaPropuesta() {
         mesAproximadoServicio: mesServicio ? mesServicio.toISOString().split('T')[0] : '',
         duracion: fechaRecepcion && fechaAprobacion ? 
           Math.ceil((fechaAprobacion.getTime() - fechaRecepcion.getTime()) / (1000 * 60 * 60 * 24)) : 0,
-        createdAt: new Date().toISOString(),
+        createdAt: formData.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
@@ -394,50 +359,66 @@ export default function NuevaPropuesta() {
           ...caracteristicas,
           propuestaId: codigoPropuesta
         },
-        personalEquipo: {
+        personal: {
           ...personalEquipo,
           propuestaId: codigoPropuesta
         },
-        desgloseCostos: {
+        costos: {
           ...desgloseCostos,
           propuestaId: codigoPropuesta
         }
       };
       
-      // Guardar propuesta completa en localStorage con código único
-      localStorage.setItem(`propuesta_${codigoPropuesta}`, JSON.stringify(propuestaCompleta));
+      // Guardar en Firestore
+      await saveCompleteProposal(propuestaCompleta);
       
-      console.log('Propuesta guardada localmente:', propuesta);
-      console.log('Características técnicas:', caracteristicas);
-      console.log('Personal y equipos:', personalEquipo);
-      console.log('Desglose de costos:', desgloseCostos);
+      console.log('Propuesta guardada en Firestore:', propuesta);
       
       // Mostrar mensaje de éxito
       toast({
         title: "Propuesta guardada exitosamente",
-        description: `Código de propuesta: ${codigoPropuesta}. La propuesta ha sido guardada con todos sus datos.`,
+        description: `Código de propuesta: ${codigoPropuesta}. La propuesta ha sido guardada en Firestore.`,
       });
 
-      // Solo limpiar formulario después de confirmar guardado exitoso
+      // Limpiar formulario después de guardar exitosamente
       setTimeout(() => {
-        clearSavedData();
-      }, 1500); // Dar tiempo para que el usuario vea el mensaje de éxito
+        clearForm();
+        if (isEditing) {
+          navigate('/propuestas');
+        }
+      }, 1500);
       
     } catch (error) {
       console.error('Error al guardar propuesta:', error);
       toast({
         title: "Error al guardar",
-        description: "Hubo un problema al guardar la propuesta. Intente nuevamente.",
+        description: "Hubo un problema al guardar la propuesta en Firestore. Intente nuevamente.",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading && isEditing) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header 
+          title={isEditing ? "Editar Propuesta" : "Nueva Propuesta"} 
+          subtitle={isEditing ? "Modificar propuesta existente" : "Crear una nueva propuesta de servicios de ingeniería ambiental"}
+        />
+        <div className="p-6">
+          <div className="text-center">Cargando datos de la propuesta...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header 
-        title="Nueva Propuesta" 
-        subtitle="Crear una nueva propuesta de servicios de ingeniería ambiental"
+        title={isEditing ? "Editar Propuesta" : "Nueva Propuesta"} 
+        subtitle={isEditing ? "Modificar propuesta existente" : "Crear una nueva propuesta de servicios de ingeniería ambiental"}
       />
       
       <div className="p-6">
@@ -755,22 +736,22 @@ export default function NuevaPropuesta() {
           {/* Botones de acción */}
           <div className="flex justify-between space-x-4 pt-6 border-t bg-white p-6 rounded-lg mt-6">
             <div className="flex space-x-4">
-              <Button type="button" variant="outline" onClick={clearSavedData}>
+              <Button type="button" variant="outline" onClick={clearForm}>
                 Limpiar Formulario
               </Button>
-              <Button type="button" onClick={handleSaveData} variant="secondary">
-                <Save className="w-4 h-4 mr-2" />
-                Guardar Borrador
-              </Button>
-            </div>
-            <div className="flex space-x-4">
               <Button type="button" onClick={handleGeneratePDF} variant="outline">
                 <Download className="w-4 h-4 mr-2" />
                 Generar PDF
               </Button>
-              <Button onClick={handleSubmit} className="eimas-gradient">
+            </div>
+            <div className="flex space-x-4">
+              <Button 
+                onClick={handleSubmit} 
+                className="eimas-gradient"
+                disabled={loading}
+              >
                 <Save className="w-4 h-4 mr-2" />
-                Guardar Propuesta
+                {loading ? 'Guardando...' : (isEditing ? 'Actualizar Propuesta' : 'Guardar Propuesta')}
               </Button>
             </div>
           </div>

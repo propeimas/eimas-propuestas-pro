@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { downloadPDF } from "@/services/pdfService";
 
 export default function VerPropuestas() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [propuestas, setPropuestas] = useState<StoredProposal[]>([]);
   const [filteredPropuestas, setFilteredPropuestas] = useState<StoredProposal[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,17 +58,21 @@ export default function VerPropuestas() {
     }
   }, [searchTerm, propuestas]);
 
-  const handleDelete = async (codigoPropuesta: string) => {
+  const handleEdit = (propuestaId: string) => {
+    navigate(`/nueva-propuesta/${propuestaId}`);
+  };
+
+  const handleDelete = async (propuestaId: string) => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar esta propuesta?')) {
       return;
     }
 
     try {
-      const success = await deleteStoredProposal(codigoPropuesta);
+      const success = await deleteStoredProposal(propuestaId);
       if (success) {
         toast({
           title: "Propuesta eliminada",
-          description: `La propuesta ${codigoPropuesta} ha sido eliminada exitosamente`,
+          description: `La propuesta ha sido eliminada exitosamente`,
         });
         // Recargar la lista
         await loadPropuestas();
@@ -202,7 +208,7 @@ export default function VerPropuestas() {
                   </TableHeader>
                   <TableBody>
                     {filteredPropuestas.map((item) => (
-                      <TableRow key={item.propuesta.codigoPropuesta}>
+                      <TableRow key={item.propuesta.id}>
                         <TableCell className="font-medium">
                           {item.propuesta.codigoPropuesta}
                         </TableCell>
@@ -228,6 +234,13 @@ export default function VerPropuestas() {
                             <Button 
                               variant="outline" 
                               size="sm"
+                              onClick={() => handleEdit(item.propuesta.id!)}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
                               onClick={() => handleDownloadPDF(item)}
                             >
                               <Download className="w-4 h-4" />
@@ -235,7 +248,7 @@ export default function VerPropuestas() {
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleDelete(item.propuesta.codigoPropuesta)}
+                              onClick={() => handleDelete(item.propuesta.id!)}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
