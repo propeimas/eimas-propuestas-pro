@@ -1,4 +1,24 @@
 
+import { 
+  saveProposal, 
+  getProposals, 
+  getProposal, 
+  deleteProposal,
+  FirestoreProposal 
+} from './firestoreProposalService';
+import { 
+  saveCharacteristics, 
+  getCharacteristicsByProposal 
+} from './firestoreCharacteristicsService';
+import { 
+  savePersonalEquipos, 
+  getPersonalEquiposByProposal 
+} from './firestorePersonalService';
+import { 
+  saveCostos, 
+  getCostosByProposal 
+} from './firestoreCostosService';
+
 export interface StoredProposal {
   propuesta: any;
   caracteristicas: any;
@@ -7,41 +27,106 @@ export interface StoredProposal {
   configuracion?: any;
 }
 
-export const getStoredProposals = (): StoredProposal[] => {
-  const proposals: StoredProposal[] = [];
-  
-  // Buscar todas las propuestas guardadas en localStorage
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith('propuesta_')) {
-      try {
-        const proposalData = localStorage.getItem(key);
-        if (proposalData) {
-          proposals.push(JSON.parse(proposalData));
-        }
-      } catch (error) {
-        console.error('Error parsing proposal data:', error);
-      }
+// Guardar propuesta completa en Firestore
+export const saveCompleteProposal = async (proposalData: StoredProposal): Promise<string> => {
+  try {
+    // 1. Guardar propuesta principal
+    const proposalId = await saveProposal(proposalData.propuesta);
+    
+    // 2. Guardar características técnicas
+    if (proposalData.caracteristicas) {
+      await saveCharacteristics({
+        propuestaId: proposalId,
+        ...proposalData.caracteristicas
+      });
     }
+    
+    // 3. Guardar personal y equipos
+    if (proposalData.personal) {
+      await savePersonalEquipos({
+        propuestaId: proposalId,
+        ...proposalData.personal
+      });
+    }
+    
+    // 4. Guardar costos
+    if (proposalData.costos) {
+      await saveCostos({
+        propuestaId: proposalId,
+        ...proposalData.costos
+      });
+    }
+    
+    return proposalId;
+  } catch (error) {
+    console.error('Error saving complete proposal:', error);
+    throw error;
   }
-  
-  return proposals;
 };
 
-export const deleteStoredProposal = (codigoPropuesta: string): boolean => {
+export const getStoredProposals = async (): Promise<StoredProposal[]> => {
   try {
-    localStorage.removeItem(`propuesta_${codigoPropuesta}`);
-    return true;
+    const proposals = await getProposals();
+    
+    // Convertir el formato de Firestore al formato esperado por la aplicación
+    const storedProposals = await Promise.all(
+      proposals.map(async (proposal) => {
+        const caracteristicas = await getCharacteristicsByProposal(proposal.id!);
+        const personal = await getPersonalEquiposByProposal(proposal.id!);
+        const costos = await getCostosByProposal(proposal.id!);
+        
+        return {
+          propuesta: proposal,
+          caracteristicas: caracteristicas || {},
+          personal: personal || {},
+          costos: costos || {}
+        };
+      })
+    );
+    
+    return storedProposals;
+  } catch (error) {
+    console.error('Error getting stored proposals:', error);
+    return [];
+  }
+};
+
+export const deleteStoredProposal = async (codigoPropuesta: string): Promise<boolean> => {
+  try {
+    // Buscar la propuesta por código
+    const proposals = await getProposals();
+    const proposal = proposals.find(p => p.codigoPropuesta === codigoPropuesta);
+    
+    if (proposal && proposal.id) {
+      return await deleteProposal(proposal.id);
+    }
+    
+    return false;
   } catch (error) {
     console.error('Error deleting proposal:', error);
     return false;
   }
 };
 
-export const getStoredProposal = (codigoPropuesta: string): StoredProposal | null => {
+export const getStoredProposal = async (codigoPropuesta: string): Promise<StoredProposal | null> => {
   try {
-    const proposalData = localStorage.getItem(`propuesta_${codigoPropuesta}`);
-    return proposalData ? JSON.parse(proposalData) : null;
+    const proposals = await getProposals();
+    const proposal = proposals.find(p => p.codigoPropuesta === codigoPropuesta);
+    
+    if (proposal && proposal.id) {
+      const caracteristicas = await getCharacteristicsByProposal(proposal.id);
+      const personal = await getPersonalEquiposByProposal(proposal.id);
+      const costos = await getCostosByProposal(proposal.id);
+      
+      return {
+        propuesta: proposal,
+        caracteristicas: caracteristicas || {},
+        personal: personal || {},
+        costos: costos || {}
+      };
+    }
+    
+    return null;
   } catch (error) {
     console.error('Error getting proposal:', error);
     return null;
